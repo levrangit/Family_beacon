@@ -1,0 +1,41 @@
+name: Supabase Tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase-test.yml"
+
+  push:
+    branches:
+      - develop
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase-test.yml"
+
+jobs:
+  test:
+    name: Test Supabase migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Reset database
+        run: supabase db reset
+
+      - name: Check migration status
+        run: supabase migration list
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
