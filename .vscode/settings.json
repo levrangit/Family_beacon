@@ -8,5 +8,13 @@
         "**/__pycache__/**",
         "**/node_modules/**",
         "**/*.pyi"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/agent/.venv/lib/python3.12/site-packages",
+        "${workspaceFolder}/backend",
+        "${workspaceFolder}/agent"
     ]
 }

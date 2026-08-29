@@ -8,6 +8,15 @@ from app.children import (
     create_child,
     list_children,
 )
+from app.devices import (
+    CreateDeviceRequest,
+    UpdateDeviceRequest,
+    create_device,
+    list_devices,
+    get_device,
+    update_device,
+    delete_device,
+)
 from app.families import get_family, list_families
 from app.profiles import get_profile
 from app.supabase_client import get_user_client, supabase
@@ -134,4 +143,71 @@ async def list_children_endpoint(
     return list_children(
         access_token=access_token,
         family_id=family_id,
+    )
+
+
+@app.post("/devices")
+async def create_device_endpoint(
+    data: CreateDeviceRequest,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return create_device(
+        access_token=access_token,
+        data=data,
+    )
+
+
+@app.get("/devices")
+async def list_devices_endpoint(
+    child_id: str | None = None,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return list_devices(
+        access_token=access_token,
+        child_id=child_id,
+    )
+
+
+@app.get("/devices/{device_id}")
+async def get_device_endpoint(
+    device_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return get_device(
+        access_token=access_token,
+        device_id=device_id,
+    )
+
+
+@app.patch("/devices/{device_id}")
+async def update_device_endpoint(
+    device_id: str,
+    data: UpdateDeviceRequest,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return update_device(
+        access_token=access_token,
+        device_id=device_id,
+        data=data,
+    )
+
+
+@app.delete("/devices/{device_id}")
+async def delete_device_endpoint(
+    device_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return delete_device(
+        access_token=access_token,
+        device_id=device_id,
     )

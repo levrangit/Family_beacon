@@ -1,37 +1,56 @@
 import asyncio
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agents import Runner
-
-from orchestrator.agent import orchestrator
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ENV_FILE = PROJECT_ROOT / "agent" / ".env"
+AGENT_ROOT = PROJECT_ROOT / "agent"
 
-load_dotenv(ENV_FILE)
+if str(AGENT_ROOT) not in sys.path:
+    sys.path.insert(0, str(AGENT_ROOT))
+
+load_dotenv(AGENT_ROOT / ".env")
+
+from agents import Runner
+from orchestrator.agent import orchestrator
 
 
 async def main() -> None:
     task = """
-Analyze the current Family Beacon project.
+We are developing the Family Beacon backend.
 
-We want to implement the next backend feature:
-Devices.
+The next feature to implement is:
 
-A device belongs to a child.
-Parents should be able to manage devices belonging to children
-in their family.
+DEVICES
 
-Do not modify any files.
+Requirements:
 
-Prepare an implementation plan for Builder, Reviewer and Tests.
+- A device belongs to a child.
+- A child belongs to a family.
+- Parents can manage devices belonging to children in their family.
+- Access must respect the existing Supabase authentication and RLS architecture.
+- Do not break the existing families and children functionality.
+- Do not use SQLite.
+- Follow the existing project architecture.
+
+For this run, do NOT modify any files.
+
+Analyze the current project and produce:
+
+1. GOAL
+2. BUILDER TASKS
+3. REVIEWER TASKS
+4. TEST TASKS
+5. EXPECTED RESULT
+
+The Orchestrator must not claim that implementation or tests are complete.
 """
 
-    result = await Runner.run(orchestrator, task)
 
+async def main() -> None:
+    result = await Runner.run(orchestrator, task)
     print(result.final_output)
 
 
