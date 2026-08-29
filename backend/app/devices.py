@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import HTTPException
 from pydantic import BaseModel
 
@@ -12,7 +14,7 @@ class CreateDeviceRequest(BaseModel):
     child_id: str
     device_id: str
     name: str
-    platform: str
+    platform: Literal["windows", "macos", "linux"]
     hostname: str | None = None
     agent_version: str | None = None
 
@@ -203,6 +205,50 @@ def update_device(
         raise HTTPException(
             status_code=500,
             detail="Failed to update device",
+        )
+
+
+def heartbeat_device(
+    access_token: str,
+    device_id: str,
+):
+    try:
+        client = get_user_client(access_token)
+
+        response = client.rpc(
+            "device_heartbeat",
+            {"device_uuid": device_id},
+        ).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=DEVICE_NOT_FOUND,
+            )
+
+        return response.data
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        error_message = str(exc)
+
+        if RLS_ERROR_MARKER in error_message:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to update this device",
+            )
+
+        if "Device not found" in error_message:
+            raise HTTPException(
+                status_code=404,
+                detail=DEVICE_NOT_FOUND,
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update device heartbeat",
         )
 
 

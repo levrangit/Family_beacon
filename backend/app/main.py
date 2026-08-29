@@ -16,6 +16,7 @@ from app.devices import (
     get_device,
     update_device,
     delete_device,
+    heartbeat_device,
 )
 from app.families import get_family, list_families
 from app.profiles import get_profile
@@ -197,6 +198,19 @@ async def update_device_endpoint(
         access_token=access_token,
         device_id=device_id,
         data=data,
+    )
+
+
+@app.post("/devices/{device_id}/heartbeat")
+async def heartbeat_device_endpoint(
+    device_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return heartbeat_device(
+        access_token=access_token,
+        device_id=device_id,
     )
 
 
