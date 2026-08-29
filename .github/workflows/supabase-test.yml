@@ -33,9 +33,6 @@ jobs:
       - name: Reset database
         run: supabase db reset
 
-      - name: Check migration status
-        run: supabase migration list
-
       - name: Stop Supabase
         if: always()
         run: supabase stop
