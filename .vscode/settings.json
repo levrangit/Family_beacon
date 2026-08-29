@@ -2,5 +2,11 @@
     "sonarlint.connectedMode.project": {
         "connectionId": "levran",
         "projectKey": "levrangit_Family_beacon"
-    }
+    },
+    "sonarlint.analysisExcludes": [
+        "**/.venv/**",
+        "**/__pycache__/**",
+        "**/node_modules/**",
+        "**/*.pyi"
+    ]
 }
