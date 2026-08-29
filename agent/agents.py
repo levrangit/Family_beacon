@@ -3,11 +3,16 @@ Agents module for Family Beacon project.
 Provides Agent and Runner classes for orchestrating AI-powered development tasks.
 """
 
-import json
+import logging
 from typing import Any, Optional
 from dataclasses import dataclass
 
 import anthropic
+from anthropic import APIError, APIConnectionError, RateLimitError
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -51,25 +56,47 @@ class Agent:
             
         Returns:
             AgentResult containing the agent's output
+            
+        Raises:
+            APIConnectionError: If unable to connect to Anthropic API
+            RateLimitError: If rate limit exceeded
+            APIError: For other API errors
         """
-        message = self.client.messages.create(
-            model=self.model,
-            max_tokens=4096,
-            system=self.instructions,
-            messages=[
-                {
-                    "role": "user",
-                    "content": task,
-                }
-            ],
-        )
-        
-        response_text = message.content[0].text if message.content else ""
-        
-        return AgentResult(
-            final_output=response_text,
-            messages=[{"role": "assistant", "content": response_text}],
-        )
+        try:
+            logger.info(f"Agent '{self.name}' processing task")
+            
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                system=self.instructions,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": task,
+                    }
+                ],
+            )
+            
+            response_text = message.content[0].text if message.content else ""
+            logger.info(f"Agent '{self.name}' completed successfully")
+            
+            return AgentResult(
+                final_output=response_text,
+                messages=[{"role": "assistant", "content": response_text}],
+            )
+            
+        except APIConnectionError as e:
+            logger.exception(f"Connection error for agent '{self.name}'")
+            raise
+        except RateLimitError as e:
+            logger.exception(f"Rate limit exceeded for agent '{self.name}'")
+            raise
+        except APIError as e:
+            logger.exception(f"API error for agent '{self.name}'")
+            raise
+        except Exception as e:
+            logger.exception(f"Unexpected error in agent '{self.name}'")
+            raise
 
 
 class Runner:
@@ -88,5 +115,17 @@ class Runner:
             
         Returns:
             AgentResult from the agent's execution
+            
+        Raises:
+            APIConnectionError: If unable to connect to API
+            RateLimitError: If rate limit exceeded
+            APIError: For other API errors
         """
-        return await agent.process(task)
+        try:
+            logger.info(f"Runner: Starting execution with agent '{agent.name}'")
+            result = await agent.process(task)
+            logger.info(f"Runner: Execution completed with agent '{agent.name}'")
+            return result
+        except (APIConnectionError, RateLimitError, APIError) as e:
+            logger.exception(f"Runner: Failed to execute with agent '{agent.name}'")
+            raise
