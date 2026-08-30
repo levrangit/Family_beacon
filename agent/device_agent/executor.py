@@ -13,6 +13,7 @@ class CommandExecutor:
         "sleep",
         "get_device_state",
         "set_time_limit",
+        "block_app",
     }
 
     def execute(
@@ -48,9 +49,31 @@ class CommandExecutor:
         if command == "set_time_limit":
             return self._set_time_limit(payload)
 
+        if command == "block_app":
+            return self._block_app(payload)
+
         raise ValueError(
             f"Unsupported device command: {command}"
         )
+
+    @staticmethod
+    def _block_app(payload: dict) -> dict:
+        app = payload.get("app")
+
+        if not app:
+            raise ValueError(
+                "app is required"
+            )
+
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Block app command is supported only on Windows"
+            )
+
+        return {
+            "status": "app_blocked",
+            "app": app,
+        }
 
     @staticmethod
     def _get_status() -> dict:
