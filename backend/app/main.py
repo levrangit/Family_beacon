@@ -46,12 +46,9 @@ from app.commands import (
 from app.device_auth import (
     DeviceAuthRequest,
     authenticate_device,
+    create_device_auth_token,
     claim_next_device_command,
     complete_device_command,
-)
-from app.device_agent_auth import (
-    DeviceAuthRequest,
-    authenticate_device,
 )
 app = FastAPI(
     title="Family Beacon API",

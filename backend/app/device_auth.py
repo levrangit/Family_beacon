@@ -1,9 +1,10 @@
 import hashlib
+import secrets
 
 from fastapi import Header, HTTPException
 from pydantic import BaseModel
 
-from app.supabase_client import supabase
+from app.supabase_client import get_user_client, supabase
 
 
 TOKEN_PREFIX = "fb_dev_"
@@ -12,6 +13,78 @@ DEVICE_AUTH_REQUIRED = "Device authorization is required"
 
 class DeviceAuthRequest(BaseModel):
     token: str
+
+
+def create_device_auth_token(
+    access_token: str,
+    device_id: str,
+):
+    if not access_token:
+        raise HTTPException(
+            status_code=401,
+            detail="User authorization is required",
+        )
+
+    if not device_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Device ID is required",
+        )
+
+    token = TOKEN_PREFIX + secrets.token_urlsafe(32)
+
+    token_hash = hashlib.sha256(
+        token.encode("utf-8")
+    ).hexdigest()
+
+    try:
+        client = get_user_client(access_token)
+
+        response = (
+            client
+            .rpc(
+                "create_device_auth_token",
+                {
+                    "target_device_id": device_id,
+                    "target_token_hash": token_hash,
+                },
+            )
+            .execute()
+        )
+
+        if not response.data:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create device auth token",
+            )
+
+        return {
+            "device_id": device_id,
+            "token": token,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        error_message = str(exc)
+
+        if "Permission denied" in error_message:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to create a device token",
+            )
+
+        if "Device not found" in error_message:
+            raise HTTPException(
+                status_code=404,
+                detail="Device not found",
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create device auth token",
+        )
 
 
 def authenticate_device_token(
