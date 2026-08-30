@@ -18,6 +18,32 @@ class DeviceAgentWorker:
         self.commands = CommandManager(self.api)
         self.executor = executor or CommandExecutor()
 
+    def recover_stale_commands(
+        self,
+        stale_after_seconds: int = 120,
+    ):
+        recovered = self.api.recover_commands(
+            stale_after_seconds=stale_after_seconds,
+        )
+
+        if not recovered:
+            print("CRASH RECOVERY: no stale commands")
+            return []
+
+        print(
+            f"CRASH RECOVERY: recovered "
+            f"{len(recovered)} command(s)"
+        )
+
+        for command in recovered:
+            print(
+                f"RECOVERED COMMAND: "
+                f"{command.get('id')} "
+                f"{command.get('command')}"
+            )
+
+        return recovered
+
     def run_once(self):
         command = self.commands.claim_next()
 
@@ -83,6 +109,11 @@ class DeviceAgentWorker:
         device_id = self.auth.authenticate()
 
         print(f"DEVICE AGENT STARTED: {device_id}")
+
+        try:
+            self.recover_stale_commands()
+        except Exception as exc:
+            print(f"CRASH RECOVERY ERROR: {exc}")
         print(
             f"POLL INTERVAL: "
             f"{POLL_INTERVAL_SECONDS}s"

@@ -63,6 +63,36 @@ class DeviceAgentAPI:
 
         return data
 
+    def recover_commands(
+        self,
+        stale_after_seconds: int = 120,
+    ):
+        response = requests.post(
+            f"{self.backend_url}/device/commands/recover",
+            headers=self._headers(),
+            params={
+                "stale_after_seconds": stale_after_seconds,
+            },
+            timeout=10,
+        )
+
+        response.raise_for_status()
+
+        if not response.content:
+            return []
+
+        data = response.json()
+
+        if not data:
+            return []
+
+        if not isinstance(data, list):
+            raise RuntimeError(
+                "Invalid recovery response format"
+            )
+
+        return data
+
     def complete_command(
         self,
         command_id: str,
