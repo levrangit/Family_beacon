@@ -10,7 +10,11 @@ def main():
     print("       FAMILY BEACON DEVICE AGENT")
     print("========================================")
 
-    worker.run()
+    try:
+        worker.run()
+    except KeyboardInterrupt:
+        print()
+        print("DEVICE AGENT STOPPED")
 
 
 if __name__ == "__main__":
