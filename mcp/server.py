@@ -99,6 +99,37 @@ def read_file(path: str) -> str:
     return target.read_text(encoding="utf-8")
 
 
+def _search_file(file_path: Path, query: str) -> list[str]:
+    if file_path.name in BLOCKED_NAMES:
+        return []
+
+    if any(part in BLOCKED_DIRECTORIES for part in file_path.parts):
+        return []
+
+    if file_path.suffix.lower() in BLOCKED_SUFFIXES:
+        return []
+
+    if ".git" in file_path.parts:
+        return []
+
+    try:
+        text = file_path.read_text(
+            encoding="utf-8",
+            errors="ignore",
+        )
+    except OSError:
+        return []
+
+    query_lower = query.lower()
+    relative = file_path.relative_to(PROJECT_ROOT)
+
+    return [
+        f"{relative}:{line_number}: {line}"
+        for line_number, line in enumerate(text.splitlines(), 1)
+        if query_lower in line.lower()
+    ]
+
+
 @mcp.tool()
 def search_files(query: str, path: str = ".") -> str:
     """Search text inside project files."""
@@ -113,32 +144,9 @@ def search_files(query: str, path: str = ".") -> str:
         if not file_path.is_file():
             continue
 
-        if file_path.name in BLOCKED_NAMES:
-            continue
-
-        if any(part in BLOCKED_DIRECTORIES for part in file_path.parts):
-            continue
-
-        if file_path.suffix.lower() in BLOCKED_SUFFIXES:
-            continue
-
-        if ".git" in file_path.parts:
-            continue
-
-        try:
-            text = file_path.read_text(
-                encoding="utf-8",
-                errors="ignore",
-            )
-        except OSError:
-            continue
-
-        for line_number, line in enumerate(text.splitlines(), 1):
-            if query.lower() in line.lower():
-                relative = file_path.relative_to(PROJECT_ROOT)
-                results.append(
-                    f"{relative}:{line_number}: {line}"
-                )
+        results.extend(
+            _search_file(file_path, query)
+        )
 
     if not results:
         return "NO RESULTS"
