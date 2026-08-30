@@ -1,3 +1,4 @@
+from datetime import datetime, timezone, timedelta
 from typing import Literal
 
 from fastapi import HTTPException
@@ -108,7 +109,12 @@ def list_devices(
             .execute()
         )
 
-        return response.data or []
+        devices = response.data or []
+
+        for device in devices:
+            device["status"] = get_device_status(device.get("last_seen"))
+
+        return devices
 
     except Exception:
         raise HTTPException(
@@ -144,7 +150,10 @@ def get_device(
                 detail=DEVICE_NOT_FOUND,
             )
 
-        return devices[0]
+        device = devices[0]
+        device["status"] = get_device_status(device.get("last_seen"))
+
+        return device
 
     except HTTPException:
         raise
@@ -294,3 +303,29 @@ def delete_device(
             status_code=500,
             detail="Failed to delete device",
         )
+
+
+DEVICE_ONLINE_TIMEOUT = timedelta(minutes=2)
+
+
+def get_device_status(last_seen: str | None) -> str:
+    if not last_seen:
+        return "offline"
+
+    try:
+        last_seen_dt = datetime.fromisoformat(
+            last_seen.replace("Z", "+00:00")
+        )
+
+        if last_seen_dt.tzinfo is None:
+            last_seen_dt = last_seen_dt.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+
+        if now - last_seen_dt <= DEVICE_ONLINE_TIMEOUT:
+            return "online"
+
+        return "offline"
+
+    except ValueError:
+        return "offline"
