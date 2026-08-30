@@ -51,12 +51,11 @@ def test_block_app_rejects_empty_app():
         )
 
 
-def test_block_app_returns_blocked_application(monkeypatch):
-    monkeypatch.setattr(
-        "device_agent.executor.platform.system",
-        lambda: "Windows",
-    )
-
+@pytest.mark.skipif(
+    __import__("platform").system() != "Windows",
+    reason="Requires a real Windows agent",
+)
+def test_block_app_returns_blocked_application():
     executor = CommandExecutor()
 
     result = executor.execute(

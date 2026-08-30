@@ -3,6 +3,8 @@ import getpass
 import platform
 import subprocess
 
+from device_agent.windows_app_blocker import WindowsAppBlocker
+
 
 class CommandExecutor:
     SUPPORTED_COMMANDS = {
@@ -60,20 +62,9 @@ class CommandExecutor:
     def _block_app(payload: dict) -> dict:
         app = payload.get("app")
 
-        if not app:
-            raise ValueError(
-                "app is required"
-            )
+        blocker = WindowsAppBlocker()
 
-        if platform.system() != "Windows":
-            raise RuntimeError(
-                "Block app command is supported only on Windows"
-            )
-
-        return {
-            "status": "app_blocked",
-            "app": app,
-        }
+        return blocker.block(app)
 
     @staticmethod
     def _get_status() -> dict:
