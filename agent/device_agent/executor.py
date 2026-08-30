@@ -8,6 +8,7 @@ class CommandExecutor:
         "get_status",
         "lock",
         "shutdown",
+        "restart",
     }
 
     def execute(
@@ -30,6 +31,9 @@ class CommandExecutor:
 
         if command == "shutdown":
             return self._shutdown()
+
+        if command == "restart":
+            return self._restart()
 
         raise ValueError(
             f"Unsupported device command: {command}"
@@ -73,4 +77,20 @@ class CommandExecutor:
 
         return {
             "status": "shutdown",
+        }
+
+    @staticmethod
+    def _restart() -> dict:
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Restart command is supported only on Windows"
+            )
+
+        subprocess.run(
+            ["shutdown", "/r", "/t", "0"],
+            check=True,
+        )
+
+        return {
+            "status": "restarting",
         }
