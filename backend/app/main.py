@@ -51,6 +51,7 @@ from app.device_auth import (
     create_device_auth_token,
     claim_next_device_command,
     complete_device_command,
+    recover_stale_device_commands,
 )
 app = FastAPI(
     title="Family Beacon API",
@@ -68,6 +69,18 @@ async def claim_device_command_endpoint(
     authorization: str | None = Header(default=None),
 ):
     return claim_next_device_command(authorization)
+
+
+
+@app.post("/device/commands/recover")
+async def recover_stale_device_commands_endpoint(
+    authorization: str | None = Header(default=None),
+    stale_after_seconds: int = 120,
+):
+    return recover_stale_device_commands(
+        authorization=authorization,
+        stale_after_seconds=stale_after_seconds,
+    )
 
 @app.get("/families/{family_id}")
 async def get_family_endpoint(

@@ -318,3 +318,50 @@ def complete_device_command(
             status_code=500,
             detail="Failed to complete device command",
         )
+
+def recover_stale_device_commands(
+    authorization: str | None,
+    stale_after_seconds: int = 120,
+):
+    token_hash = get_device_token_hash(authorization)
+
+    if supabase is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Supabase configuration is missing",
+        )
+
+    try:
+        response = (
+            supabase
+            .rpc(
+                "recover_stale_device_commands",
+                {
+                    "target_token_hash": token_hash,
+                    "stale_after_seconds": stale_after_seconds,
+                },
+            )
+            .execute()
+        )
+
+        return response.data or []
+
+    except Exception as exc:
+        error_message = str(exc)
+
+        if "Invalid device token" in error_message:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid device token",
+            )
+
+        if "Invalid stale timeout" in error_message:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid stale timeout",
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to recover stale device commands",
+        )
