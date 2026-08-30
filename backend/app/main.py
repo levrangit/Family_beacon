@@ -18,7 +18,21 @@ from app.devices import (
     delete_device,
     heartbeat_device,
 )
+from app.time_policies import (
+    CreateTimePolicyRequest,
+    UpdateTimePolicyRequest,
+    create_time_policy,
+    list_time_policies,
+    get_time_policy,
+    update_time_policy,
+    delete_time_policy,
+)
 from app.families import get_family, list_families
+from app.time_usage import (
+    RecordTimeUsageRequest,
+    record_time_usage,
+    list_time_usage,
+)
 from app.profiles import get_profile
 from app.supabase_client import get_user_client, supabase
 
@@ -224,4 +238,109 @@ async def delete_device_endpoint(
     return delete_device(
         access_token=access_token,
         device_id=device_id,
+    )
+
+
+@app.post("/time-policies")
+async def create_time_policy_endpoint(
+    data: CreateTimePolicyRequest,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return create_time_policy(
+        access_token=access_token,
+        data=data,
+    )
+
+
+@app.get("/time-policies")
+async def list_time_policies_endpoint(
+    child_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return list_time_policies(
+        access_token=access_token,
+        child_id=child_id,
+    )
+
+
+@app.get("/time-policies/{policy_id}")
+async def get_time_policy_endpoint(
+    policy_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return get_time_policy(
+        access_token=access_token,
+        policy_id=policy_id,
+    )
+
+
+@app.patch("/time-policies/{policy_id}")
+async def update_time_policy_endpoint(
+    policy_id: str,
+    data: UpdateTimePolicyRequest,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return update_time_policy(
+        access_token=access_token,
+        policy_id=policy_id,
+        data=data,
+    )
+
+
+@app.delete("/time-policies/{policy_id}")
+async def delete_time_policy_endpoint(
+    policy_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return delete_time_policy(
+        access_token=access_token,
+        policy_id=policy_id,
+    )
+
+
+@app.get("/time-usage")
+async def list_time_usage_endpoint(
+    child_id: str | None = None,
+    usage_date: str | None = None,
+    auth=Depends(get_current_user),
+):
+    from datetime import date
+
+    current_user, access_token = auth
+
+    parsed_date = (
+        date.fromisoformat(usage_date)
+        if usage_date is not None
+        else None
+    )
+
+    return list_time_usage(
+        access_token=access_token,
+        child_id=child_id,
+        usage_date=parsed_date,
+    )
+
+
+@app.post("/devices/{device_id}/usage")
+async def record_time_usage_endpoint(
+    device_id: str,
+    data: RecordTimeUsageRequest,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return record_time_usage(
+        access_token=access_token,
+        device_id=device_id,
+        data=data,
     )
