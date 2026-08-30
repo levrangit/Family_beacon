@@ -22,6 +22,12 @@ def main():
             device_id = auth.authenticate()
 
             print(f"DEVICE AUTH OK: {device_id}")
+
+            try:
+                worker.recover_stale_commands()
+            except Exception as exc:
+                print(f"CRASH RECOVERY ERROR: {exc}")
+
             print(
                 f"POLL INTERVAL: "
                 f"{POLL_INTERVAL_SECONDS}s"
