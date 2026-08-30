@@ -12,6 +12,7 @@ class CommandExecutor:
         "restart",
         "sleep",
         "get_device_state",
+        "set_time_limit",
     }
 
     def execute(
@@ -43,6 +44,9 @@ class CommandExecutor:
 
         if command == "get_device_state":
             return self._get_device_state()
+
+        if command == "set_time_limit":
+            return self._set_time_limit(payload)
 
         raise ValueError(
             f"Unsupported device command: {command}"
@@ -139,4 +143,33 @@ class CommandExecutor:
             "platform": platform.system(),
             "hostname": platform.node(),
             "username": getpass.getuser(),
+        }
+
+    @staticmethod
+    def _set_time_limit(payload: dict) -> dict:
+        if "minutes" not in payload:
+            raise ValueError(
+                "minutes is required"
+            )
+
+        minutes = payload["minutes"]
+
+        if isinstance(minutes, bool) or not isinstance(minutes, int):
+            raise ValueError(
+                "minutes must be an integer"
+            )
+
+        if minutes <= 0:
+            raise ValueError(
+                "minutes must be positive"
+            )
+
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Set time limit command is supported only on Windows"
+            )
+
+        return {
+            "status": "time_limit_set",
+            "minutes": minutes,
         }
