@@ -7,6 +7,7 @@ from app.supabase_client import supabase
 
 
 TOKEN_PREFIX = "fb_dev_"
+DEVICE_AUTH_REQUIRED = "Device authorization is required"
 
 
 class DeviceAuthRequest(BaseModel):
@@ -19,7 +20,7 @@ def authenticate_device_token(
     if not authorization:
         raise HTTPException(
             status_code=401,
-            detail="Device authorization is required",
+            detail=DEVICE_AUTH_REQUIRED,
         )
 
     scheme, _, token = authorization.partition(" ")
@@ -137,7 +138,7 @@ def claim_next_device_command(
     if not authorization:
         raise HTTPException(
             status_code=401,
-            detail="Device authorization is required",
+            detail=DEVICE_AUTH_REQUIRED,
         )
 
     scheme, _, token = authorization.partition(" ")
@@ -206,7 +207,7 @@ def complete_device_command(
     if not authorization:
         raise HTTPException(
             status_code=401,
-            detail="Device authorization is required",
+            detail=DEVICE_AUTH_REQUIRED,
         )
 
     scheme, _, token = authorization.partition(" ")
