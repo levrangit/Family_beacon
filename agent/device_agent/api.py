@@ -31,6 +31,19 @@ class DeviceAgentAPI:
         response.raise_for_status()
         return response.json()
 
+    def heartbeat(self) -> dict:
+        if not self.device_token:
+            raise RuntimeError("Device token is not configured")
+
+        response = requests.post(
+            f"{self.backend_url}/device/heartbeat",
+            headers=self._headers(),
+            timeout=10,
+        )
+        response.raise_for_status()
+
+        return response.json()
+
     def claim_command(self):
         response = requests.post(
             f"{self.backend_url}/device/commands/claim",

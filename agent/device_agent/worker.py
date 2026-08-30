@@ -3,7 +3,7 @@ import time
 from .api import DeviceAgentAPI
 from .auth import DeviceAuth
 from .commands import CommandManager
-from .config import POLL_INTERVAL_SECONDS
+from .config import HEARTBEAT_INTERVAL_SECONDS, POLL_INTERVAL_SECONDS
 from .executor import CommandExecutor
 
 
@@ -111,6 +111,11 @@ class DeviceAgentWorker:
         print(f"DEVICE AGENT STARTED: {device_id}")
 
         try:
+            self.api.heartbeat()
+        except Exception as exc:
+            print(f"HEARTBEAT ERROR: {exc}")
+
+        try:
             self.recover_stale_commands()
         except Exception as exc:
             print(f"CRASH RECOVERY ERROR: {exc}")
@@ -119,11 +124,22 @@ class DeviceAgentWorker:
             f"{POLL_INTERVAL_SECONDS}s"
         )
 
+        last_heartbeat_at = time.time()
+
         while True:
             try:
                 self.run_once()
             except Exception as exc:
                 print(f"WORKER ERROR: {exc}")
+
+            now = time.time()
+
+            if now - last_heartbeat_at >= HEARTBEAT_INTERVAL_SECONDS:
+                try:
+                    self.api.heartbeat()
+                    last_heartbeat_at = now
+                except Exception as exc:
+                    print(f"HEARTBEAT ERROR: {exc}")
 
             time.sleep(POLL_INTERVAL_SECONDS)
 

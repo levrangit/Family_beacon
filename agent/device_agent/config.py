@@ -27,3 +27,11 @@ POLL_INTERVAL_SECONDS = int(
         "5",
     )
 )
+
+
+HEARTBEAT_INTERVAL_SECONDS = int(
+    os.getenv(
+        "FAMILY_BEACON_HEARTBEAT_INTERVAL_SECONDS",
+        "30",
+    )
+)
