@@ -34,11 +34,29 @@
 - Кроссплатформенность (Windows / macOS / Linux)
 
 ## Текущий статус
-- [x] Дизайн-система Guardian Flow
-- [x] Бренд и логотип
-- [x] Экраны родительского дашборда (Обзор, Лимиты, История, Устройства)
-- [x] Экран блокировки для ребёнка
-- [x] Визуальная согласованность между экранами
+Реализован фундамент системы:
+
+Supabase Auth;
+PostgreSQL schema и migrations;
+Backend API;
+device authentication;
+device tokens;
+command queue;
+command claim/complete lifecycle;
+Device Agent;
+Device Agent worker;
+выполнение первой команды get_status.
+
+Следующие этапы:
+
+heartbeat и мониторинг устройства;
+получение системной информации;
+управление состоянием Windows;
+контроль времени использования;
+Windows Service;
+автоматическое обновление Device Agent;
+расширение Web UI;
+развитие AI-агентов.
 
 ## Структура навигации
 **Основное меню (боковая панель):**
