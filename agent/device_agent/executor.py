@@ -1,11 +1,13 @@
 import ctypes
 import platform
+import subprocess
 
 
 class CommandExecutor:
     SUPPORTED_COMMANDS = {
         "get_status",
         "lock",
+        "shutdown",
     }
 
     def execute(
@@ -25,6 +27,9 @@ class CommandExecutor:
 
         if command == "lock":
             return self._lock()
+
+        if command == "shutdown":
+            return self._shutdown()
 
         raise ValueError(
             f"Unsupported device command: {command}"
@@ -52,4 +57,20 @@ class CommandExecutor:
 
         return {
             "status": "locked",
+        }
+
+    @staticmethod
+    def _shutdown() -> dict:
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Shutdown command is supported only on Windows"
+            )
+
+        subprocess.run(
+            ["shutdown", "/s", "/t", "0"],
+            check=True,
+        )
+
+        return {
+            "status": "shutdown",
         }
