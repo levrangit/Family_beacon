@@ -28,23 +28,15 @@ class DeviceAgentWorker:
         command_name = command["command"]
         payload = command.get("payload") or {}
 
+        # Execute the command separately from reporting its result.
+        # A completion/reporting failure must not be treated as an
+        # execution failure.
+
         try:
             result = self.executor.execute(
                 command_name,
                 payload,
             )
-
-            self.commands.complete(
-                command_id=command_id,
-                status="completed",
-                result=result,
-            )
-
-            print(
-                f"COMMAND COMPLETED: {command_id} "
-                f"{command_name}"
-            )
-
         except Exception as exc:
             error_message = str(exc)
 
@@ -63,6 +55,26 @@ class DeviceAgentWorker:
             print(
                 f"COMMAND FAILED: {command_id} "
                 f"{command_name}: {error_message}"
+            )
+
+            return True
+
+        try:
+            self.commands.complete(
+                command_id=command_id,
+                status="completed",
+                result=result,
+            )
+
+            print(
+                f"COMMAND COMPLETED: {command_id} "
+                f"{command_name}"
+            )
+
+        except Exception as exc:
+            print(
+                f"COMMAND RESULT REPORT FAILED: "
+                f"{command_id} {command_name}: {exc}"
             )
 
         return True
