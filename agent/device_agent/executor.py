@@ -1,4 +1,5 @@
 import ctypes
+import getpass
 import platform
 import subprocess
 
@@ -10,6 +11,7 @@ class CommandExecutor:
         "shutdown",
         "restart",
         "sleep",
+        "get_device_state",
     }
 
     def execute(
@@ -38,6 +40,9 @@ class CommandExecutor:
 
         if command == "sleep":
             return self._sleep()
+
+        if command == "get_device_state":
+            return self._get_device_state()
 
         raise ValueError(
             f"Unsupported device command: {command}"
@@ -119,4 +124,19 @@ class CommandExecutor:
 
         return {
             "status": "sleeping",
+        }
+
+
+    @staticmethod
+    def _get_device_state() -> dict:
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Get device state command is supported only on Windows"
+            )
+
+        return {
+            "status": "online",
+            "platform": platform.system(),
+            "hostname": platform.node(),
+            "username": getpass.getuser(),
         }
