@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 
 
 AGENT_DIR = Path(__file__).resolve().parent
-AGENT_ENV_FILE = AGENT_DIR.parent / ".env"
+PROJECT_DIR = AGENT_DIR.parents[1]
+BACKEND_ENV_FILE = PROJECT_DIR / "backend" / ".env"
 
-load_dotenv(AGENT_ENV_FILE)
+load_dotenv(BACKEND_ENV_FILE)
 
 
 BACKEND_URL = os.getenv(

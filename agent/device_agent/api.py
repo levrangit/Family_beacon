@@ -48,6 +48,16 @@ class DeviceAgentAPI:
         if not data:
             return None
 
+        if isinstance(data, list):
+            if not data:
+                return None
+            data = data[0]
+
+        if not isinstance(data, dict):
+            raise RuntimeError(
+                "Invalid claim command response format"
+            )
+
         if data.get("id") is None:
             return None
 

@@ -87,7 +87,7 @@ def create_device_auth_token(
         )
 
 
-def authenticate_device_token(
+def get_device_token_hash(
     authorization: str | None = Header(default=None),
 ) -> str:
     if not authorization:
@@ -110,15 +110,21 @@ def authenticate_device_token(
             detail="Invalid device token",
         )
 
+    return hashlib.sha256(
+        token.encode("utf-8")
+    ).hexdigest()
+
+
+def authenticate_device_token(
+    authorization: str | None = Header(default=None),
+) -> str:
+    token_hash = get_device_token_hash(authorization)
+
     if supabase is None:
         raise HTTPException(
             status_code=500,
             detail="Supabase configuration is missing",
         )
-
-    token_hash = hashlib.sha256(
-        token.encode("utf-8")
-    ).hexdigest()
 
     try:
         response = (
@@ -149,7 +155,6 @@ def authenticate_device_token(
             detail="Device authentication failed",
         )
 
-
 def authenticate_device(token: str):
     if not token:
         raise HTTPException(
@@ -163,15 +168,13 @@ def authenticate_device(token: str):
             detail="Invalid device token",
         )
 
+    token_hash = get_device_token_hash(f"Bearer {token}")
+
     if supabase is None:
         raise HTTPException(
             status_code=500,
             detail="Supabase configuration is missing",
         )
-
-    token_hash = hashlib.sha256(
-        token.encode("utf-8")
-    ).hexdigest()
 
     try:
         response = (
@@ -208,35 +211,13 @@ def authenticate_device(token: str):
 def claim_next_device_command(
     authorization: str | None = None,
 ):
-    if not authorization:
-        raise HTTPException(
-            status_code=401,
-            detail=DEVICE_AUTH_REQUIRED,
-        )
-
-    scheme, _, token = authorization.partition(" ")
-
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid device authorization",
-        )
-
-    if not token.startswith(TOKEN_PREFIX):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid device token",
-        )
+    token_hash = get_device_token_hash(authorization)
 
     if supabase is None:
         raise HTTPException(
             status_code=500,
             detail="Supabase configuration is missing",
         )
-
-    token_hash = hashlib.sha256(
-        token.encode("utf-8")
-    ).hexdigest()
 
     try:
         response = (
@@ -277,35 +258,13 @@ def complete_device_command(
     result: dict | None = None,
     error_message: str | None = None,
 ):
-    if not authorization:
-        raise HTTPException(
-            status_code=401,
-            detail=DEVICE_AUTH_REQUIRED,
-        )
-
-    scheme, _, token = authorization.partition(" ")
-
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid device authorization",
-        )
-
-    if not token.startswith(TOKEN_PREFIX):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid device token",
-        )
+    token_hash = get_device_token_hash(authorization)
 
     if supabase is None:
         raise HTTPException(
             status_code=500,
             detail="Supabase configuration is missing",
         )
-
-    token_hash = hashlib.sha256(
-        token.encode("utf-8")
-    ).hexdigest()
 
     try:
         response = (

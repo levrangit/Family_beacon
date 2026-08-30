@@ -1,5 +1,5 @@
 
-from fastapi import Depends, FastAPI, Header, Header
+from fastapi import Depends, FastAPI, Header
 from pydantic import BaseModel
 
 from app.auth import get_current_user
@@ -43,6 +43,8 @@ from app.commands import (
     get_command,
 )
 
+from app.device_agent import device_heartbeat
+
 from app.device_auth import (
     DeviceAuthRequest,
     authenticate_device,
@@ -54,6 +56,12 @@ app = FastAPI(
     title="Family Beacon API",
     version="0.1.0",
 )
+
+@app.post("/device/heartbeat")
+async def device_heartbeat_endpoint(
+    authorization: str | None = Header(default=None),
+):
+    return device_heartbeat(authorization)
 
 @app.post("/device/commands/claim")
 async def claim_device_command_endpoint(

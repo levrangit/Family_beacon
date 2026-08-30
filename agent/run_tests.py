@@ -12,7 +12,7 @@ from tests.agent import test_agent
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ENV_FILE = PROJECT_ROOT / "agent" / ".env"
+ENV_FILE = PROJECT_ROOT / "backend" / ".env"
 
 load_dotenv(ENV_FILE)
 

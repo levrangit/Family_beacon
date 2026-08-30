@@ -11,7 +11,7 @@ AGENT_ROOT = PROJECT_ROOT / "agent"
 if str(AGENT_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT_ROOT))
 
-load_dotenv(AGENT_ROOT / ".env")
+load_dotenv(PROJECT_ROOT / "backend" / ".env")
 
 from agents import Runner
 from orchestrator.agent import orchestrator
