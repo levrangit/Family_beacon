@@ -9,6 +9,7 @@ class CommandExecutor:
         "lock",
         "shutdown",
         "restart",
+        "sleep",
     }
 
     def execute(
@@ -34,6 +35,9 @@ class CommandExecutor:
 
         if command == "restart":
             return self._restart()
+
+        if command == "sleep":
+            return self._sleep()
 
         raise ValueError(
             f"Unsupported device command: {command}"
@@ -93,4 +97,26 @@ class CommandExecutor:
 
         return {
             "status": "restarting",
+        }
+
+    @staticmethod
+    def _sleep() -> dict:
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Sleep command is supported only on Windows"
+            )
+
+        subprocess.run(
+            [
+                "rundll32.exe",
+                "powrprof.dll,SetSuspendState",
+                "0",
+                "1",
+                "0",
+            ],
+            check=True,
+        )
+
+        return {
+            "status": "sleeping",
         }
