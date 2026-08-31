@@ -16,5 +16,6 @@
         "${workspaceFolder}/agent/.venv/lib/python3.12/site-packages",
         "${workspaceFolder}/backend",
         "${workspaceFolder}/agent"
-    ]
+    ],
+    "python.terminal.activateEnvironment": true
 }
