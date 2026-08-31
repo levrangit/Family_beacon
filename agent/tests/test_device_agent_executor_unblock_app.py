@@ -193,3 +193,61 @@ def test_executor_unblock_app_returns_unblocked_application(monkeypatch):
         "status": "app_unblocked",
         "app": "notepad.exe",
     }
+
+
+
+def test_worker_executes_unblock_app_command():
+    from device_agent.worker import DeviceAgentWorker
+
+    calls = []
+
+    class FakeCommands:
+        def claim_next(self):
+            return {
+                "id": "command-1",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+        def complete(self, **kwargs):
+            calls.append(("complete", kwargs))
+
+    class FakeExecutor:
+        def execute(self, command, payload):
+            calls.append(("execute", command, payload))
+            return {
+                "status": "app_unblocked",
+                "app": payload["app"],
+            }
+
+    worker = DeviceAgentWorker.__new__(DeviceAgentWorker)
+
+    worker.commands = FakeCommands()
+    worker.executor = FakeExecutor()
+
+    result = worker.run_once()
+
+    assert result is True
+
+    assert calls == [
+        (
+            "execute",
+            "unblock_app",
+            {
+                "app": "notepad.exe",
+            },
+        ),
+        (
+            "complete",
+            {
+                "command_id": "command-1",
+                "status": "completed",
+                "result": {
+                    "status": "app_unblocked",
+                    "app": "notepad.exe",
+                },
+            },
+        ),
+    ]
