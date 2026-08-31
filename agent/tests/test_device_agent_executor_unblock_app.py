@@ -506,3 +506,307 @@ def test_unblock_app_full_worker_flow():
             },
         ),
     ]
+
+
+def test_unblock_app_is_supported():
+    from device_agent.executor import CommandExecutor
+
+    assert "unblock_app" in CommandExecutor.SUPPORTED_COMMANDS
+
+
+def test_unblock_app_rejected_on_non_windows(monkeypatch):
+    monkeypatch.setattr(
+        "device_agent.executor.platform.system",
+        lambda: "Linux",
+    )
+
+    from device_agent.executor import CommandExecutor
+
+    executor = CommandExecutor()
+
+    with pytest.raises(
+        RuntimeError,
+        match="supported only on Windows",
+    ):
+        executor.execute(
+            "unblock_app",
+            {"app": "notepad.exe"},
+        )
+
+
+def test_unblock_app_requires_app():
+    from device_agent.executor import CommandExecutor
+
+    executor = CommandExecutor()
+
+    with pytest.raises(
+        ValueError,
+        match="app",
+    ):
+        executor.execute(
+            "unblock_app",
+            {},
+        )
+
+
+def test_unblock_app_rejects_empty_app():
+    from device_agent.executor import CommandExecutor
+
+    executor = CommandExecutor()
+
+    with pytest.raises(
+        ValueError,
+        match="app",
+    ):
+        executor.execute(
+            "unblock_app",
+            {"app": ""},
+        )
+
+
+@pytest.mark.skipif(
+    __import__("platform").system() != "Windows",
+    reason="Requires a real Windows agent",
+)
+def test_unblock_app_returns_unblocked_application():
+    from device_agent.executor import CommandExecutor
+
+    executor = CommandExecutor()
+
+    result = executor.execute(
+        "unblock_app",
+        {"app": "notepad.exe"},
+    )
+
+    assert result == {
+        "status": "app_unblocked",
+        "app": "notepad.exe",
+    }
+
+
+def test_unblock_app_remove_block_rule_builds_powershell_pipeline(
+    monkeypatch,
+):
+    from device_agent.windows_app_blocker import WindowsAppBlocker
+
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["env"] = kwargs["env"]
+        captured["check"] = kwargs["check"]
+        captured["capture_output"] = kwargs["capture_output"]
+        captured["text"] = kwargs["text"]
+
+    monkeypatch.setattr(
+        "device_agent.windows_app_blocker.subprocess.run",
+        fake_run,
+    )
+
+    WindowsAppBlocker._remove_block_rule("notepad.exe")
+
+    assert captured["command"][0] == "powershell.exe"
+    assert captured["command"][1:] == [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        captured["command"][-1],
+    ]
+
+    script = captured["command"][-1]
+
+    assert "Get-AppLockerPolicy -Local -Xml" in script
+    assert "$env:FAMILY_BEACON_APP" in script
+    assert "Family Beacon Block $env:FAMILY_BEACON_APP" in script
+    assert "Set-AppLockerPolicy" in script
+    assert "$tempPolicy" in script
+
+    assert captured["env"]["FAMILY_BEACON_APP"] == "notepad.exe"
+
+    assert captured["check"] is True
+    assert captured["capture_output"] is True
+    assert captured["text"] is True
+
+
+def test_command_manager_claims_unblock_app_command():
+    from device_agent.commands import CommandManager
+
+    calls = []
+
+    class FakeAPI:
+        def claim_command(self):
+            calls.append("claim")
+            return {
+                "id": "command-1",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+    manager = CommandManager(FakeAPI())
+
+    result = manager.claim_next()
+
+    assert calls == [
+        "claim",
+    ]
+
+    assert result == {
+        "id": "command-1",
+        "command": "unblock_app",
+        "payload": {
+            "app": "notepad.exe",
+        },
+    }
+
+
+def test_command_manager_completes_unblock_app_command():
+    from device_agent.commands import CommandManager
+
+    calls = []
+
+    class FakeAPI:
+        def complete_command(self, **kwargs):
+            calls.append(kwargs)
+            return {
+                "status": "completed",
+            }
+
+    manager = CommandManager(FakeAPI())
+
+    result = manager.complete(
+        command_id="command-1",
+        status="completed",
+        result={
+            "status": "app_unblocked",
+            "app": "notepad.exe",
+        },
+    )
+
+    assert calls == [
+        {
+            "command_id": "command-1",
+            "status": "completed",
+            "result": {
+                "status": "app_unblocked",
+                "app": "notepad.exe",
+            },
+            "error_message": None,
+        },
+    ]
+
+    assert result == {
+        "status": "completed",
+    }
+
+
+def test_worker_marks_unblock_app_failed_on_executor_error():
+    from device_agent.worker import DeviceAgentWorker
+
+    calls = []
+
+    class FakeCommands:
+        def claim_next(self):
+            return {
+                "id": "command-2",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+        def complete(self, **kwargs):
+            calls.append(kwargs)
+
+    class FakeExecutor:
+        def execute(self, command, payload):
+            raise RuntimeError(
+                "Unblock app command is supported only on Windows"
+            )
+
+    worker = DeviceAgentWorker.__new__(DeviceAgentWorker)
+
+    worker.commands = FakeCommands()
+    worker.executor = FakeExecutor()
+
+    result = worker.run_once()
+
+    assert result is True
+
+    assert calls == [
+        {
+            "command_id": "command-2",
+            "status": "failed",
+            "error_message": (
+                "Unblock app command is supported only on Windows"
+            ),
+        },
+    ]
+
+
+def test_api_completes_unblock_app_command(monkeypatch):
+    from device_agent.api import DeviceAgentAPI
+
+    calls = []
+
+    class FakeResponse:
+        content = b'{"status":"completed"}'
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "status": "completed",
+            }
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "device_agent.api.requests.post",
+        fake_post,
+    )
+
+    api = DeviceAgentAPI(
+        backend_url="https://example.test",
+        device_token="device-token",
+    )
+
+    result = api.complete_command(
+        command_id="command-1",
+        status="completed",
+        result={
+            "status": "app_unblocked",
+            "app": "notepad.exe",
+        },
+    )
+
+    assert calls == [
+        (
+            "https://example.test/device/commands/command-1/complete",
+            {
+                "headers": {
+                    "Authorization": "Bearer device-token",
+                    "Content-Type": "application/json",
+                },
+                "json": {
+                    "status": "completed",
+                    "result": {
+                        "status": "app_unblocked",
+                        "app": "notepad.exe",
+                    },
+                    "error_message": None,
+                },
+                "timeout": 10,
+            },
+        ),
+    ]
+
+    assert result == {
+        "status": "completed",
+    }
