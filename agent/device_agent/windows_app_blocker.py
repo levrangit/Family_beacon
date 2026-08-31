@@ -28,6 +28,85 @@ class WindowsAppBlocker:
             "app": app,
         }
 
+    def unblock(self, app: str) -> dict:
+        if not app:
+            raise ValueError("app is required")
+
+        app = app.strip()
+
+        if not app:
+            raise ValueError("app is required")
+
+        if platform.system() != "Windows":
+            raise RuntimeError(
+                "Unblock app command is supported only on Windows"
+            )
+
+        self._remove_block_rule(app)
+
+        return {
+            "status": "app_unblocked",
+            "app": app,
+        }
+
+    @staticmethod
+    def _remove_block_rule(app: str) -> None:
+        powershell_script = r"""
+$ErrorActionPreference = "Stop"
+
+$policy = Get-AppLockerPolicy -Local -Xml
+
+[xml]$xml = $policy
+
+$namespace = @{
+    app = "http://schemas.microsoft.com/CodeSigning/2006/08/Policy"
+}
+
+$rules = $xml.AppLockerPolicy.RuleCollection.FilePathRule
+
+foreach ($rule in @($rules)) {
+    if (
+        $rule.Name -eq "Family Beacon Block $env:FAMILY_BEACON_APP"
+    ) {
+        $rule.ParentNode.RemoveChild($rule) | Out-Null
+    }
+}
+
+$tempPolicy = [System.IO.Path]::GetTempFileName()
+
+try {
+    $xml.Save($tempPolicy)
+
+    Set-AppLockerPolicy `
+        -XmlPolicy $tempPolicy `
+        -Merge
+}
+finally {
+    if (Test-Path $tempPolicy) {
+        Remove-Item $tempPolicy -Force
+    }
+}
+"""
+
+        env = os.environ.copy()
+        env["FAMILY_BEACON_APP"] = app
+
+        subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                powershell_script,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
     @staticmethod
     def _build_policy_xml(app: str) -> str:
         namespace = (

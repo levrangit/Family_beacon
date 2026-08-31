@@ -16,6 +16,7 @@ class CommandExecutor:
         "get_device_state",
         "set_time_limit",
         "block_app",
+        "unblock_app",
     }
 
     def execute(
@@ -54,6 +55,9 @@ class CommandExecutor:
         if command == "block_app":
             return self._block_app(payload)
 
+        if command == "unblock_app":
+            return self._unblock_app(payload)
+
         raise ValueError(
             f"Unsupported device command: {command}"
         )
@@ -65,6 +69,14 @@ class CommandExecutor:
         blocker = WindowsAppBlocker()
 
         return blocker.block(app)
+
+    @staticmethod
+    def _unblock_app(payload: dict) -> dict:
+        app = payload.get("app")
+
+        blocker = WindowsAppBlocker()
+
+        return blocker.unblock(app)
 
     @staticmethod
     def _get_status() -> dict:
