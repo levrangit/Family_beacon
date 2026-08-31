@@ -251,3 +251,258 @@ def test_worker_executes_unblock_app_command():
             },
         ),
     ]
+
+
+def test_api_claims_unblock_app_command(monkeypatch):
+    from device_agent.api import DeviceAgentAPI
+
+    class FakeResponse:
+        content = b'{"id":"command-1","command":"unblock_app","payload":{"app":"notepad.exe"}}'
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "id": "command-1",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "device_agent.api.requests.post",
+        fake_post,
+    )
+
+    api = DeviceAgentAPI(
+        backend_url="http://backend.test",
+        device_token="test-device-token",
+    )
+
+    result = api.claim_command()
+
+    assert result == {
+        "id": "command-1",
+        "command": "unblock_app",
+        "payload": {
+            "app": "notepad.exe",
+        },
+    }
+
+    assert calls == [
+        (
+            "http://backend.test/device/commands/claim",
+            {
+                "headers": {
+                    "Authorization": "Bearer test-device-token",
+                    "Content-Type": "application/json",
+                },
+                "timeout": 10,
+            },
+        ),
+    ]
+
+
+def test_api_completes_unblock_app_command(monkeypatch):
+    from device_agent.api import DeviceAgentAPI
+
+    class FakeResponse:
+        content = b'{"status":"completed"}'
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "status": "completed",
+            }
+
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "device_agent.api.requests.post",
+        fake_post,
+    )
+
+    api = DeviceAgentAPI(
+        backend_url="http://backend.test",
+        device_token="test-device-token",
+    )
+
+    result = api.complete_command(
+        command_id="command-1",
+        status="completed",
+        result={
+            "status": "app_unblocked",
+            "app": "notepad.exe",
+        },
+    )
+
+    assert result == {
+        "status": "completed",
+    }
+
+    assert calls == [
+        (
+            "http://backend.test/device/commands/command-1/complete",
+            {
+                "headers": {
+                    "Authorization": "Bearer test-device-token",
+                    "Content-Type": "application/json",
+                },
+                "json": {
+                    "status": "completed",
+                    "result": {
+                        "status": "app_unblocked",
+                        "app": "notepad.exe",
+                    },
+                    "error_message": None,
+                },
+                "timeout": 10,
+            },
+        ),
+    ]
+
+
+def test_command_manager_claims_unblock_app_command():
+    from device_agent.commands import CommandManager
+
+    class FakeAPI:
+        def claim_command(self):
+            return {
+                "id": "command-1",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+    manager = CommandManager(FakeAPI())
+
+    result = manager.claim_next()
+
+    assert result == {
+        "id": "command-1",
+        "command": "unblock_app",
+        "payload": {
+            "app": "notepad.exe",
+        },
+    }
+
+
+def test_command_manager_completes_unblock_app_command():
+    from device_agent.commands import CommandManager
+
+    calls = []
+
+    class FakeAPI:
+        def complete_command(self, **kwargs):
+            calls.append(kwargs)
+
+            return {
+                "status": "completed",
+            }
+
+    manager = CommandManager(FakeAPI())
+
+    result = manager.complete(
+        command_id="command-1",
+        status="completed",
+        result={
+            "status": "app_unblocked",
+            "app": "notepad.exe",
+        },
+    )
+
+    assert result == {
+        "status": "completed",
+    }
+
+    assert calls == [
+        {
+            "command_id": "command-1",
+            "status": "completed",
+            "result": {
+                "status": "app_unblocked",
+                "app": "notepad.exe",
+            },
+            "error_message": None,
+        },
+    ]
+
+
+def test_unblock_app_full_worker_flow():
+    from device_agent.worker import DeviceAgentWorker
+
+    calls = []
+
+    class FakeAPI:
+        def claim_command(self):
+            calls.append("api.claim_command")
+            return {
+                "id": "command-1",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+        def complete_command(self, **kwargs):
+            calls.append(("api.complete_command", kwargs))
+            return {
+                "status": "completed",
+            }
+
+    class FakeExecutor:
+        def execute(self, command, payload):
+            calls.append(("executor.execute", command, payload))
+            return {
+                "status": "app_unblocked",
+                "app": payload["app"],
+            }
+
+    api = FakeAPI()
+
+    worker = DeviceAgentWorker(
+        api=api,
+        executor=FakeExecutor(),
+    )
+
+    result = worker.run_once()
+
+    assert result is True
+
+    assert calls == [
+        "api.claim_command",
+        (
+            "executor.execute",
+            "unblock_app",
+            {
+                "app": "notepad.exe",
+            },
+        ),
+        (
+            "api.complete_command",
+            {
+                "command_id": "command-1",
+                "status": "completed",
+                "result": {
+                    "status": "app_unblocked",
+                    "app": "notepad.exe",
+                },
+                "error_message": None,
+            },
+        ),
+    ]
