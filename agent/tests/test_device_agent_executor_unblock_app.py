@@ -810,3 +810,87 @@ def test_api_completes_unblock_app_command(monkeypatch):
     assert result == {
         "status": "completed",
     }
+
+
+def test_api_claim_command_raises_on_http_error(monkeypatch):
+    from device_agent.api import DeviceAgentAPI
+
+    class FakeResponse:
+        content = b'{"detail":"Device token is required"}'
+
+        def raise_for_status(self):
+            raise RuntimeError("HTTP 401")
+
+    def fake_post(url, **kwargs):
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "device_agent.api.requests.post",
+        fake_post,
+    )
+
+    api = DeviceAgentAPI(
+        backend_url="https://example.test",
+        device_token="device-token",
+    )
+
+    with pytest.raises(RuntimeError, match="HTTP 401"):
+        api.claim_command()
+
+
+def test_api_claims_unblock_app_command(monkeypatch):
+    from device_agent.api import DeviceAgentAPI
+
+    calls = []
+
+    class FakeResponse:
+        content = b'{"id":"command-1","command":"unblock_app","payload":{"app":"notepad.exe"}}'
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "id": "command-1",
+                "command": "unblock_app",
+                "payload": {
+                    "app": "notepad.exe",
+                },
+            }
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "device_agent.api.requests.post",
+        fake_post,
+    )
+
+    api = DeviceAgentAPI(
+        backend_url="https://example.test",
+        device_token="device-token",
+    )
+
+    result = api.claim_command()
+
+    assert calls == [
+        (
+            "https://example.test/device/commands/claim",
+            {
+                "headers": {
+                    "Authorization": "Bearer device-token",
+                    "Content-Type": "application/json",
+                },
+                "timeout": 10,
+            },
+        ),
+    ]
+
+    assert result == {
+        "id": "command-1",
+        "command": "unblock_app",
+        "payload": {
+            "app": "notepad.exe",
+        },
+    }
