@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+set -a
+source .env
+set +a
+
+./.venv/bin/python - <<'PY'
+import os
+from pathlib import Path
+
+from supabase import create_client
+
+supabase = create_client(
+    os.environ["SUPABASE_URL"],
+    os.environ["SUPABASE_KEY"],
+)
+
+auth = supabase.auth.sign_in_with_password({
+    "email": os.environ["TEST_EMAIL"],
+    "password": os.environ["TEST_PASSWORD"],
+})
+
+if auth.session is None:
+    raise SystemExit("Supabase authentication failed: session was not returned")
+
+access_token = auth.session.access_token
+env_path = Path(".env")
+
+lines = env_path.read_text().splitlines()
+updated = False
+result = []
+
+for line in lines:
+    if line.startswith("ACCESS_TOKEN_JWT="):
+        result.append(f"ACCESS_TOKEN_JWT={access_token}")
+        updated = True
+    else:
+        result.append(line)
+
+if not updated:
+    result.append(f"ACCESS_TOKEN_JWT={access_token}")
+
+env_path.write_text("\n".join(result) + "\n")
+
+print("Supabase authentication: OK")
+print(f"User ID: {auth.user.id}")
+print("Fresh session: obtained")
+print("ACCESS_TOKEN_JWT: updated")
+PY

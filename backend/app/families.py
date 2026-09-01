@@ -74,3 +74,23 @@ def get_family(
             status_code=500,
             detail="Failed to load family",
         )
+
+
+def create_family(
+    supabase_client,
+    family_name: str,
+):
+    if not family_name.strip():
+        raise ValueError("Family name is required")
+
+    response = supabase_client.rpc(
+        "create_family",
+        {
+            "family_name": family_name,
+        },
+    ).execute()
+
+    if response.data is None:
+        raise ValueError("Family ID was not returned")
+
+    return response.data
