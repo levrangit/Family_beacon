@@ -1,9 +1,9 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.auth import get_current_user
+from app.main import app
 
 
 def test_parent_registration_endpoint_returns_user_and_token():
@@ -70,6 +70,38 @@ def test_parent_registration_endpoint_requires_supabase_configuration():
         app.dependency_overrides.clear()
 
 
+def test_parent_registration_endpoint_delegates_to_register_parent_service():
+    from app import main
+
+    original_supabase = main.supabase
+    main.supabase = MagicMock()
+    expected = {
+        "user_id": "user-123",
+        "access_token": "access-token-123",
+    }
+
+    try:
+        with patch.object(main, "register_parent", return_value=expected) as mock_register:
+            response = TestClient(app).post(
+                "/auth/register-parent",
+                json={
+                    "telegram_id": 123456789,
+                    "login": "parent2@example.com",
+                    "password": "secret123",
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.json() == expected
+        request = mock_register.call_args.args[1]
+        assert request.telegram_id == 123456789
+        assert str(request.login) == "parent2@example.com"
+        assert request.password == "secret123"
+    finally:
+        main.supabase = original_supabase
+        app.dependency_overrides.clear()
+
+
 def test_create_family_invite_endpoint_returns_invite_code():
     access_token = "parent-access-token"
     app.dependency_overrides[get_current_user] = lambda: (
@@ -117,4 +149,41 @@ def test_create_family_invite_endpoint_returns_invite_code():
         main.get_user_client = original_get_user_client
         family_invites.generate_invite_code = original_generate_invite_code
         family_invites.hash_invite_code = original_hash_invite_code
+        app.dependency_overrides.clear()
+
+
+def test_create_family_invite_endpoint_delegates_to_create_family_invite_service():
+    from app import main
+
+    access_token = "parent-access-token"
+    app.dependency_overrides[get_current_user] = lambda: (
+        MagicMock(id="parent-user-id"),
+        access_token,
+    )
+    mock_user_client = MagicMock()
+    original_get_user_client = main.get_user_client
+    main.get_user_client = lambda token: mock_user_client
+    expected = {
+        "invite_id": "invite-123",
+        "family_id": "family-123",
+        "code": "7K4M-92QX",
+        "expires_at": "2026-09-03T12:00:00+00:00",
+    }
+
+    try:
+        with patch.object(
+            main,
+            "create_family_invite",
+            return_value=expected,
+        ) as mock_create_invite:
+            response = TestClient(app).post("/families/family-123/invite")
+
+        assert response.status_code == 200
+        assert response.json() == expected
+        mock_create_invite.assert_called_once_with(
+            mock_user_client,
+            "family-123",
+        )
+    finally:
+        main.get_user_client = original_get_user_client
         app.dependency_overrides.clear()
