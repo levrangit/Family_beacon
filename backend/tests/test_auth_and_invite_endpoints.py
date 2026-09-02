@@ -14,6 +14,7 @@ def test_register_parent_endpoint_uses_register_parent_service(monkeypatch):
         "access_token": "access-token-123",
     }
     calls = {}
+    mock_supabase = MagicMock()
 
     def fake_register_parent(client, request):
         calls["client"] = client
@@ -21,8 +22,8 @@ def test_register_parent_endpoint_uses_register_parent_service(monkeypatch):
         return expected
 
     monkeypatch.setattr(main, "register_parent", fake_register_parent)
-    main_supabase = main.supabase
-    main.supabase = MagicMock()
+    original_supabase = main.supabase
+    main.supabase = mock_supabase
 
     try:
         response = TestClient(app).post(
@@ -34,11 +35,11 @@ def test_register_parent_endpoint_uses_register_parent_service(monkeypatch):
             },
         )
     finally:
-        main.supabase = main_supabase
+        main.supabase = original_supabase
 
     assert response.status_code == 200
     assert response.json() == expected
-    assert calls["client"] is main.supabase if main.supabase is not None else calls["client"] is not None
+    assert calls["client"] is mock_supabase
     assert calls["request"].telegram_id == 123456789
     assert calls["request"].login == "parent2@example.com"
     assert calls["request"].password == "secret123"
@@ -76,7 +77,11 @@ def test_create_family_invite_endpoint_uses_create_family_invite_service(monkeyp
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json()["code"] == "7K4M-92QX"
-    assert response.json()["family_id"] == "family-123"
+    assert response.json() == {
+        "invite_id": "invite-123",
+        "family_id": "family-123",
+        "code": "7K4M-92QX",
+        "expires_at": "2026-09-03T12:00:00+00:00",
+    }
     assert calls["client"] is mock_user_client
     assert calls["family_id"] == "family-123"
