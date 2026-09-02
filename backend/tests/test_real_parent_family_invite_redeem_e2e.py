@@ -30,80 +30,79 @@ def test_real_registration_family_invite_redeem_flow():
     parent2_email = f"e2e-parent2-{suffix}@example.com"
     password = "E2e-Test-Password-2026!"
 
-    client = TestClient(app)
+    with TestClient(app) as client:
+        # 1. Real parent registration through the API.
+        register1 = client.post(
+            "/auth/register-parent",
+            json={
+                "telegram_id": int(f"1{int(time.time() * 1000) % 10**9:09d}"),
+                "login": parent1_email,
+                "password": password,
+            },
+        )
+        assert register1.status_code == 200, register1.text
+        parent1 = register1.json()
+        assert parent1["user_id"]
+        assert parent1["access_token"]
 
-    # 1. Real parent registration through the API.
-    register1 = client.post(
-        "/auth/register-parent",
-        json={
-            "telegram_id": int(f"1{int(time.time() * 1000) % 10**9:09d}"),
-            "login": parent1_email,
-            "password": password,
-        },
-    )
-    assert register1.status_code == 200, register1.text
-    parent1 = register1.json()
-    assert parent1["user_id"]
-    assert parent1["access_token"]
+        parent1_headers = {"Authorization": f"Bearer {parent1['access_token']}"}
 
-    parent1_headers = {"Authorization": f"Bearer {parent1['access_token']}"}
+        # 2. The first registered parent creates a real family via the DB RPC.
+        create_family = client.post(
+            "/families",
+            json={"name": f"E2E Family {suffix}"},
+            headers=parent1_headers,
+        )
+        assert create_family.status_code == 200, create_family.text
+        family_id = create_family.json()["family_id"]
+        assert family_id
 
-    # 2. The first registered parent creates a real family via the DB RPC.
-    create_family = client.post(
-        "/families",
-        json={"name": f"E2E Family {suffix}"},
-        headers=parent1_headers,
-    )
-    assert create_family.status_code == 200, create_family.text
-    family_id = create_family.json()["family_id"]
-    assert family_id
+        # 3. The first parent creates a real invite; hashing is not mocked.
+        create_invite = client.post(
+            f"/families/{family_id}/invite",
+            headers=parent1_headers,
+        )
+        assert create_invite.status_code == 200, create_invite.text
+        invite = create_invite.json()
+        assert invite["invite_id"]
+        assert invite["family_id"] == family_id
+        assert invite["code"]
+        assert invite["expires_at"]
 
-    # 3. The first parent creates a real invite; hashing is not mocked.
-    create_invite = client.post(
-        f"/families/{family_id}/invite",
-        headers=parent1_headers,
-    )
-    assert create_invite.status_code == 200, create_invite.text
-    invite = create_invite.json()
-    assert invite["invite_id"]
-    assert invite["family_id"] == family_id
-    assert invite["code"]
-    assert invite["expires_at"]
+        # 4. Register a second real parent.
+        register2 = client.post(
+            "/auth/register-parent",
+            json={
+                "telegram_id": int(f"2{int(time.time() * 1000) % 10**9:09d}"),
+                "login": parent2_email,
+                "password": password,
+            },
+        )
+        assert register2.status_code == 200, register2.text
+        parent2 = register2.json()
+        assert parent2["user_id"]
+        assert parent2["access_token"]
+        assert parent2["user_id"] != parent1["user_id"]
 
-    # 4. Register a second real parent.
-    register2 = client.post(
-        "/auth/register-parent",
-        json={
-            "telegram_id": int(f"2{int(time.time() * 1000) % 10**9:09d}"),
-            "login": parent2_email,
-            "password": password,
-        },
-    )
-    assert register2.status_code == 200, register2.text
-    parent2 = register2.json()
-    assert parent2["user_id"]
-    assert parent2["access_token"]
-    assert parent2["user_id"] != parent1["user_id"]
+        parent2_headers = {"Authorization": f"Bearer {parent2['access_token']}"}
 
-    parent2_headers = {"Authorization": f"Bearer {parent2['access_token']}"}
+        # 5. The second parent redeems the real invite.
+        redeem = client.post(
+            "/families/redeem-invite",
+            json={"code": invite["code"]},
+            headers=parent2_headers,
+        )
+        assert redeem.status_code == 200, redeem.text
+        redeemed = redeem.json()
+        assert redeemed == {
+            "invite_id": invite["invite_id"],
+            "family_id": family_id,
+        }
 
-    # 5. The second parent redeems the real invite.
-    redeem = client.post(
-        "/families/redeem-invite",
-        json={"code": invite["code"]},
-        headers=parent2_headers,
-    )
-    assert redeem.status_code == 200, redeem.text
-    redeemed = redeem.json()
-    assert redeemed == {
-        "invite_id": invite["invite_id"],
-        "family_id": family_id,
-    }
-
-    # 6. Verify the second parent can read the family through normal RLS.
-    family = client.get(
-        f"/families/{family_id}",
-        headers=parent2_headers,
-    )
-    assert family.status_code == 200, family.text
-    assert family.json()["id"] == family_id
+        # 6. Verify the second parent can read the family through normal RLS.
+        family = client.get(
+            f"/families/{family_id}",
+            headers=parent2_headers,
+        )
+        assert family.status_code == 200, family.text
+        assert family.json()["id"] == family_id
