@@ -4,7 +4,27 @@
 
 **«начнем запуск тестовой среды»**
 
-## 1. Запуск backend
+## 1. Авторизация Supabase CLI в удалённом Supabase
+
+Перед работой с удалённым проектом авторизуй Supabase CLI:
+
+```bash
+cd /workspaces/Family_beacon && supabase login
+```
+
+CLI попросит Supabase Access Token. Сам токен не публиковать в чате и не записывать в файлы проекта.
+
+После входа проверь, что CLI видит проекты:
+
+```bash
+cd /workspaces/Family_beacon && supabase projects list
+```
+
+Ожидается список доступных Supabase-проектов.
+
+**Важно:** `SUPABASE_ACCESS_TOKEN` — это токен Supabase CLI. Он отличается от `ACCESS_TOKEN_JWT`, который используется как JWT пользователя Family Beacon для авторизованных запросов.
+
+## 2. Запуск backend
 
 Открой отдельный терминал Codespace:
 
@@ -21,7 +41,7 @@ PYTHONPATH=. ./.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Uvicorn running on http://0.0.0.0:8000
 ```
 
-## 2. Проверка backend по сети
+## 3. Проверка backend по сети
 
 Во втором терминале:
 
@@ -31,7 +51,7 @@ curl -i http://127.0.0.1:8000/health
 
 Ожидается HTTP 200 и ответ со статусом `ok`.
 
-## 3. Проверка связи backend → удалённый Supabase
+## 4. Проверка связи backend → удалённый Supabase
 
 Во втором терминале:
 
@@ -41,7 +61,7 @@ curl -i http://127.0.0.1:8000/supabase-check
 
 Команда проверяет доступ backend к удалённому Supabase.
 
-## 4. Активация тестовой Supabase-сессии
+## 5. Активация тестовой Supabase-сессии
 
 В третьем терминале:
 
@@ -60,7 +80,7 @@ ACCESS_TOKEN_JWT: updated
 
 JWT не выводить в чат и не передавать вручную.
 
-## 5. Проверка авторизованного backend-запроса
+## 6. Проверка авторизованного backend-запроса
 
 После успешного `dev-auth`:
 
@@ -90,6 +110,7 @@ profiles
 
 ## Правила безопасности
 
+- Supabase CLI Access Token не публиковать в чате.
 - `ACCESS_TOKEN_JWT` не публиковать в чате.
 - Содержимое `backend/.env` не публиковать целиком.
 - Тестовые credentials из `backend/.env` считаются временными и должны быть удалены после завершения соответствующих работ.
@@ -98,9 +119,11 @@ profiles
 
 ## Быстрый порядок запуска
 
-1. Запустить `uvicorn` на `0.0.0.0:8000`.
-2. Проверить `/health`.
-3. Проверить `/supabase-check`.
-4. Выполнить `./dev-auth`.
-5. Проверить `/me` с актуальным `ACCESS_TOKEN_JWT`.
-6. Только после этого запускать integration/security tests.
+1. Выполнить `supabase login`.
+2. Проверить `supabase projects list`.
+3. Запустить `uvicorn` на `0.0.0.0:8000`.
+4. Проверить `/health`.
+5. Проверить `/supabase-check`.
+6. Выполнить `./dev-auth`.
+7. Проверить `/me` с актуальным `ACCESS_TOKEN_JWT`.
+8. Только после этого запускать integration/security tests.
