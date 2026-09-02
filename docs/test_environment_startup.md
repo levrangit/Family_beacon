@@ -61,28 +61,41 @@ curl -i http://127.0.0.1:8000/supabase-check
 
 Команда проверяет доступ backend к удалённому Supabase.
 
-## 5. Активация тестовой Supabase-сессии
+## 5. Актуализация пользовательского Supabase JWT
 
-В третьем терминале:
+В проекте есть штатный скрипт:
 
-```bash
-cd /workspaces/Family_beacon/backend && ./dev-auth
-```
+`backend/refresh_access_token.py`
 
-Ожидается:
+Он выполняет вход тестового пользователя в Supabase через `TEST_EMAIL` и `TEST_PASSWORD` из `backend/.env`, получает свежий `access_token` и обновляет локальную переменную:
 
 ```text
-Supabase authentication: OK
-User ID: ...
-Fresh session: obtained
-ACCESS_TOKEN_JWT: updated
+ACCESS_TOKEN_JWT=
 ```
+
+Скрипт не выводит сам JWT в консоль.
+
+При начале работы с тестовой средой **сначала используй этот скрипт, если `ACCESS_TOKEN_JWT` может быть устаревшим**:
+
+```bash
+cd /workspaces/Family_beacon/backend && \
+python refresh_access_token.py
+```
+
+После обновления токена для текущей shell-сессии:
+
+```bash
+cd /workspaces/Family_beacon/backend && \
+set -a && source .env && set +a
+```
+
+Также в проекте существует команда `./dev-auth`, которая предназначена для активации тестовой Supabase-сессии. Если она используется как основной сценарий запуска, она также должна обеспечивать получение актуального `ACCESS_TOKEN_JWT`.
 
 JWT не выводить в чат и не передавать вручную.
 
 ## 6. Проверка авторизованного backend-запроса
 
-После успешного `dev-auth`:
+После успешного обновления токена:
 
 ```bash
 cd /workspaces/Family_beacon/backend && \
@@ -124,6 +137,7 @@ profiles
 3. Запустить `uvicorn` на `0.0.0.0:8000`.
 4. Проверить `/health`.
 5. Проверить `/supabase-check`.
-6. Выполнить `./dev-auth`.
-7. Проверить `/me` с актуальным `ACCESS_TOKEN_JWT`.
-8. Только после этого запускать integration/security tests.
+6. Выполнить `python refresh_access_token.py` для получения актуального `ACCESS_TOKEN_JWT`.
+7. Загрузить обновлённые переменные из `.env` в текущую shell-сессию.
+8. Проверить `/me` с актуальным `ACCESS_TOKEN_JWT`.
+9. Только после этого запускать integration/security tests.
