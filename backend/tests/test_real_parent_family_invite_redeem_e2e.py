@@ -5,7 +5,6 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth import get_current_user
 from app.main import app
 
 
@@ -13,10 +12,9 @@ from app.main import app
 def test_real_registration_family_invite_redeem_flow():
     """Exercise the real Supabase-backed parent-to-parent flow.
 
-    The test intentionally does not mock auth, RPCs, or invite hashing.
-    It creates two temporary Supabase Auth users, registers both through the
-    HTTP endpoint, creates a family with the first parent, creates an invite,
-    and redeems that invite with the second parent's access token.
+    No auth, RPC, or invite-hash calls are mocked. Two temporary Supabase
+    Auth users are registered through the real HTTP endpoint; the first
+    creates a family and invite, and the second redeems the invite.
 
     Run explicitly with RUN_REAL_E2E=1 to avoid creating remote test users in
     normal unit-test runs.
@@ -48,27 +46,23 @@ def test_real_registration_family_invite_redeem_flow():
     assert parent1["user_id"]
     assert parent1["access_token"]
 
-    # 2. The first registered parent creates a real family via the DB RPC.
-    app.dependency_overrides[get_current_user] = lambda: (None, parent1["access_token"])
-    try:
-        create_family = client.post(
-            "/families",
-            json={"name": f"E2E Family {suffix}"},
-        )
-    finally:
-        app.dependency_overrides.clear()
+    parent1_headers = {"Authorization": f"Bearer {parent1['access_token']}"}
 
+    # 2. The first registered parent creates a real family via the DB RPC.
+    create_family = client.post(
+        "/families",
+        json={"name": f"E2E Family {suffix}"},
+        headers=parent1_headers,
+    )
     assert create_family.status_code == 200, create_family.text
     family_id = create_family.json()["family_id"]
     assert family_id
 
     # 3. The first parent creates a real invite; hashing is not mocked.
-    app.dependency_overrides[get_current_user] = lambda: (None, parent1["access_token"])
-    try:
-        create_invite = client.post(f"/families/{family_id}/invite")
-    finally:
-        app.dependency_overrides.clear()
-
+    create_invite = client.post(
+        f"/families/{family_id}/invite",
+        headers=parent1_headers,
+    )
     assert create_invite.status_code == 200, create_invite.text
     invite = create_invite.json()
     assert invite["invite_id"]
@@ -91,16 +85,14 @@ def test_real_registration_family_invite_redeem_flow():
     assert parent2["access_token"]
     assert parent2["user_id"] != parent1["user_id"]
 
-    # 5. The second parent redeems the real invite.
-    app.dependency_overrides[get_current_user] = lambda: (None, parent2["access_token"])
-    try:
-        redeem = client.post(
-            "/families/redeem-invite",
-            json={"code": invite["code"]},
-        )
-    finally:
-        app.dependency_overrides.clear()
+    parent2_headers = {"Authorization": f"Bearer {parent2['access_token']}"}
 
+    # 5. The second parent redeems the real invite.
+    redeem = client.post(
+        "/families/redeem-invite",
+        json={"code": invite["code"]},
+        headers=parent2_headers,
+    )
     assert redeem.status_code == 200, redeem.text
     redeemed = redeem.json()
     assert redeemed == {
@@ -109,11 +101,9 @@ def test_real_registration_family_invite_redeem_flow():
     }
 
     # 6. Verify the second parent can read the family through normal RLS.
-    app.dependency_overrides[get_current_user] = lambda: (None, parent2["access_token"])
-    try:
-        family = client.get(f"/families/{family_id}")
-    finally:
-        app.dependency_overrides.clear()
-
+    family = client.get(
+        f"/families/{family_id}",
+        headers=parent2_headers,
+    )
     assert family.status_code == 200, family.text
     assert family.json()["id"] == family_id
