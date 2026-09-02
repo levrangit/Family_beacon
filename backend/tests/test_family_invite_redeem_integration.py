@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -21,14 +22,17 @@ def supabase_client(parent_supabase_client):
     return parent_supabase_client
 
 
-def test_redeem_family_invite_integration(supabase_client):
+def test_redeem_family_invite_integration(
+    parent_supabase_client,
+    invite_redeemer_supabase_client,
+):
     created = create_family_invite(
-        supabase_client,
+        parent_supabase_client,
         FAMILY_ID,
     )
 
     redeemed = redeem_family_invite(
-        supabase_client,
+        invite_redeemer_supabase_client,
         created["code"],
     )
 
@@ -36,14 +40,17 @@ def test_redeem_family_invite_integration(supabase_client):
     assert redeemed["family_id"] == FAMILY_ID
 
 
-def test_redeem_family_invite_cannot_be_used_twice(supabase_client):
+def test_redeem_family_invite_cannot_be_used_twice(
+    parent_supabase_client,
+    invite_redeemer_supabase_client,
+):
     created = create_family_invite(
-        supabase_client,
+        parent_supabase_client,
         FAMILY_ID,
     )
 
     first_redeem = redeem_family_invite(
-        supabase_client,
+        invite_redeemer_supabase_client,
         created["code"],
     )
 
@@ -51,7 +58,7 @@ def test_redeem_family_invite_cannot_be_used_twice(supabase_client):
 
     with pytest.raises(Exception, match="invalid|expired|revoked|used"):
         redeem_family_invite(
-            supabase_client,
+            invite_redeemer_supabase_client,
             created["code"],
         )
 
