@@ -1,5 +1,5 @@
 
-from fastapi import Depends, FastAPI, Header
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from app.auth import get_current_user
@@ -28,6 +28,7 @@ from app.time_policies import (
     delete_time_policy,
 )
 from app.families import get_family, list_families
+from app.family_invites import redeem_family_invite
 from app.time_usage import (
     RecordTimeUsageRequest,
     record_time_usage,
@@ -153,6 +154,32 @@ async def me(auth=Depends(get_current_user)):
 class CreateFamilyRequest(BaseModel):
     name: str
 
+
+
+
+class RedeemFamilyInviteRequest(BaseModel):
+    code: str
+
+
+@app.post("/families/redeem-invite")
+async def redeem_family_invite_endpoint(
+    data: RedeemFamilyInviteRequest,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    user_client = get_user_client(access_token)
+
+    try:
+        return redeem_family_invite(
+            user_client,
+            data.code,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
 
 @app.post("/families")
 async def create_family(
