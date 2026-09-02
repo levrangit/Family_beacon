@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
+from app import family_invites
 from app.auth import get_current_user
 from app.main import app
 
@@ -21,7 +22,9 @@ def test_new_parent_can_redeem_invite_after_registration_contract():
     from app import main
 
     original_get_user_client = main.get_user_client
+    original_hash_invite_code = family_invites.hash_invite_code
     main.get_user_client = lambda token: mock_user_client
+    family_invites.hash_invite_code = lambda code: "hashed-invite-code"
 
     try:
         client = TestClient(app)
@@ -37,8 +40,10 @@ def test_new_parent_can_redeem_invite_after_registration_contract():
         }
         mock_user_client.rpc.assert_called_once_with(
             "redeem_family_invite",
-            {"p_code_hash": MagicMock.return_value},
+            {"p_code_hash": "hashed-invite-code"},
         )
+        family_invites.hash_invite_code.assert_called_once_with("7K4M-92QX")
     finally:
         main.get_user_client = original_get_user_client
+        family_invites.hash_invite_code = original_hash_invite_code
         app.dependency_overrides.clear()
