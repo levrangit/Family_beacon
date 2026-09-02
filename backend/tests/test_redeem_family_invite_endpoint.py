@@ -170,13 +170,9 @@ def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
         family_id,
     )
 
-    access_token = invite_redeemer_supabase_client.postgrest.session.headers[
-        "Authorization"
-    ].removeprefix("Bearer ")
-
     app.dependency_overrides[get_current_user] = lambda: (
         MagicMock(id="invite-redeemer-user-id"),
-        access_token,
+        invite_redeemer_supabase_client.test_access_token,
     )
 
     try:
