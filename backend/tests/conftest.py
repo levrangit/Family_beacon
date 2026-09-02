@@ -1,17 +1,27 @@
+import os
+import uuid
+
+import httpx
 import pytest
-from supabase import create_client
+from supabase import ClientOptions, create_client
 
 from tests.auth.client import AuthTestClient, SUPABASE_KEY, SUPABASE_URL
 from tests.auth.users import get_test_user
 
 
+SUPABASE_HTTP_TIMEOUT = 120.0
+
+
 @pytest.fixture(scope="session")
 def parent_supabase_client():
     user = get_test_user("parent")
-
+    http_client = httpx.Client(
+        timeout=httpx.Timeout(SUPABASE_HTTP_TIMEOUT),
+    )
     supabase = create_client(
         SUPABASE_URL,
         SUPABASE_KEY,
+        options=ClientOptions(httpx_client=http_client),
     )
 
     response = supabase.auth.sign_in_with_password(
@@ -22,6 +32,7 @@ def parent_supabase_client():
     )
 
     if not response.session:
+        http_client.close()
         raise RuntimeError(
             "Test parent Supabase authentication did not return a session"
         )
@@ -29,13 +40,61 @@ def parent_supabase_client():
     access_token = response.session.access_token
 
     if not access_token:
+        http_client.close()
         raise RuntimeError(
             "Test parent Supabase authentication did not return an access token"
         )
 
     supabase.postgrest.auth(access_token)
 
-    yield supabase
+    try:
+        yield supabase
+    finally:
+        http_client.close()
+
+
+@pytest.fixture
+def invite_redeemer_supabase_client():
+    email = f"pytest-invite-redeemer-{uuid.uuid4().hex}@example.com"
+    password = f"Test-{uuid.uuid4().hex}-Aa1!"
+    http_client = httpx.Client(
+        timeout=httpx.Timeout(SUPABASE_HTTP_TIMEOUT),
+    )
+    supabase = create_client(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        options=ClientOptions(httpx_client=http_client),
+    )
+
+    try:
+        response = supabase.auth.sign_up(
+            {
+                "email": email,
+                "password": password,
+                "options": {
+                    "data": {
+                        "telegram_id": int(uuid.uuid4().int % 2_000_000_000),
+                    }
+                },
+            }
+        )
+
+        if not response.session:
+            raise RuntimeError(
+                "Test invite redeemer authentication did not return a session"
+            )
+
+        access_token = response.session.access_token
+
+        if not access_token:
+            raise RuntimeError(
+                "Test invite redeemer authentication did not return an access token"
+            )
+
+        supabase.postgrest.auth(access_token)
+        yield supabase
+    finally:
+        http_client.close()
 
 
 @pytest.fixture(scope="session")
