@@ -92,6 +92,7 @@ def invite_redeemer_supabase_client():
             )
 
         supabase.postgrest.auth(access_token)
+        supabase.test_access_token = access_token
         yield supabase
     finally:
         http_client.close()
