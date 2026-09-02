@@ -1,4 +1,6 @@
 
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
@@ -36,7 +38,7 @@ from app.time_usage import (
     list_time_usage,
 )
 from app.profiles import get_profile
-from app.supabase_client import get_user_client, supabase
+from app.supabase_client import close_http_client, get_user_client, supabase
 
 from app.commands import (
     CreateCommandRequest,
@@ -56,9 +58,17 @@ from app.device_auth import (
     recover_stale_device_commands,
 )
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    close_http_client()
+
+
 app = FastAPI(
     title="Family Beacon API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 
