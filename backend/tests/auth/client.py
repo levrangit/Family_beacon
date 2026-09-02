@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
 
+import httpx
 import requests
 from dotenv import load_dotenv
-from supabase import create_client
+from supabase import ClientOptions, create_client
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -17,6 +18,9 @@ BASE_URL = os.getenv(
     "FAMILY_BEACON_API_URL",
     "http://127.0.0.1:8000",
 )
+
+
+SUPABASE_HTTP_TIMEOUT = 120.0
 
 
 class AuthTestClient:
@@ -33,10 +37,15 @@ class AuthTestClient:
         self._access_token = self._authenticate()
 
     def _authenticate(self) -> str:
+        http_client = httpx.Client(
+            timeout=httpx.Timeout(SUPABASE_HTTP_TIMEOUT),
+        )
+
         try:
             supabase = create_client(
                 SUPABASE_URL,
                 SUPABASE_KEY,
+                options=ClientOptions(httpx_client=http_client),
             )
 
             response = supabase.auth.sign_in_with_password(
@@ -58,6 +67,8 @@ class AuthTestClient:
             raise
         except Exception as exc:
             raise RuntimeError("Test authentication failed") from exc
+        finally:
+            http_client.close()
 
     @property
     def access_token(self) -> str:
