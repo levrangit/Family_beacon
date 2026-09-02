@@ -28,7 +28,8 @@ from app.time_policies import (
     delete_time_policy,
 )
 from app.families import get_family, list_families
-from app.family_invites import redeem_family_invite
+from app.family_invites import create_family_invite, redeem_family_invite
+from app.parent_registration import ParentRegistrationRequest, register_parent
 from app.time_usage import (
     RecordTimeUsageRequest,
     record_time_usage,
@@ -54,10 +55,12 @@ from app.device_auth import (
     complete_device_command,
     recover_stale_device_commands,
 )
+
 app = FastAPI(
     title="Family Beacon API",
     version="0.1.0",
 )
+
 
 @app.post("/device/heartbeat")
 async def device_heartbeat_endpoint(
@@ -65,12 +68,12 @@ async def device_heartbeat_endpoint(
 ):
     return device_heartbeat(authorization)
 
+
 @app.post("/device/commands/claim")
 async def claim_device_command_endpoint(
     authorization: str | None = Header(default=None),
 ):
     return claim_next_device_command(authorization)
-
 
 
 @app.post("/device/commands/recover")
@@ -82,6 +85,7 @@ async def recover_stale_device_commands_endpoint(
         authorization=authorization,
         stale_after_seconds=stale_after_seconds,
     )
+
 
 @app.get("/families/{family_id}")
 async def get_family_endpoint(
@@ -95,6 +99,7 @@ async def get_family_endpoint(
         family_id=family_id,
     )
 
+
 @app.get("/families")
 async def list_families_endpoint(
     auth=Depends(get_current_user),
@@ -104,6 +109,7 @@ async def list_families_endpoint(
     return list_families(
         access_token=access_token,
     )
+
 
 @app.get("/health")
 async def health() -> dict[str, str]:
@@ -155,10 +161,48 @@ class CreateFamilyRequest(BaseModel):
     name: str
 
 
-
-
 class RedeemFamilyInviteRequest(BaseModel):
     code: str
+
+
+@app.post("/auth/register-parent")
+async def register_parent_endpoint(
+    data: ParentRegistrationRequest,
+):
+    if supabase is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase configuration is missing",
+        )
+
+    try:
+        return register_parent(supabase, data)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+
+@app.post("/families/{family_id}/invite")
+async def create_family_invite_endpoint(
+    family_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    user_client = get_user_client(access_token)
+
+    try:
+        return create_family_invite(
+            user_client,
+            family_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
 
 
 @app.post("/families/redeem-invite")
@@ -180,6 +224,7 @@ async def redeem_family_invite_endpoint(
             status_code=400,
             detail=str(exc),
         ) from exc
+
 
 @app.post("/families")
 async def create_family(
@@ -412,6 +457,8 @@ async def record_time_usage_endpoint(
         device_id=device_id,
         data=data,
     )
+
+
 @app.post("/commands")
 async def create_command_endpoint(
     data: CreateCommandRequest,
@@ -422,69 +469,4 @@ async def create_command_endpoint(
     return create_command(
         access_token=access_token,
         data=data,
-    )
-
-
-@app.get("/commands")
-async def list_commands_endpoint(
-    device_id: str | None = None,
-    auth=Depends(get_current_user),
-):
-    current_user, access_token = auth
-
-    return list_commands(
-        access_token=access_token,
-        device_id=device_id,
-    )
-
-
-@app.get("/commands/{command_id}")
-async def get_command_endpoint(
-    command_id: str,
-    auth=Depends(get_current_user),
-):
-    current_user, access_token = auth
-
-    return get_command(
-        access_token=access_token,
-        command_id=command_id,
-    )
-
-@app.post("/devices/{device_id}/auth-token")
-async def create_device_auth_token_endpoint(
-    device_id: str,
-    auth=Depends(get_current_user),
-):
-    current_user, access_token = auth
-
-    return create_device_auth_token(
-        access_token=access_token,
-        device_id=device_id,
-    )
-
-@app.post("/device/auth")
-async def device_auth_endpoint(
-    data: DeviceAuthRequest,
-):
-    return authenticate_device(data.token)
-
-
-class CompleteDeviceCommandRequest(BaseModel):
-    status: str
-    result: dict | None = None
-    error_message: str | None = None
-
-
-@app.post("/device/commands/{command_id}/complete")
-async def complete_device_command_endpoint(
-    command_id: str,
-    data: CompleteDeviceCommandRequest,
-    authorization: str | None = Header(default=None),
-):
-    return complete_device_command(
-        authorization=authorization,
-        command_id=command_id,
-        status=data.status,
-        result=data.result,
-        error_message=data.error_message,
     )
