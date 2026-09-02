@@ -19,8 +19,8 @@ supabase = create_client(
 )
 
 auth = supabase.auth.sign_in_with_password({
-    "email": os.environ["TEST_EMAIL"],
-    "password": os.environ["TEST_PASSWORD"],
+    "email": os.environ["TEST_PARENT_EMAIL"],
+    "password": os.environ["TEST_PARENT_PASSWORD"],
 })
 
 if auth.session is None:

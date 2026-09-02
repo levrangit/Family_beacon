@@ -15,17 +15,17 @@ ENV_FILE = BACKEND_DIR / ".env"
 load_dotenv(ENV_FILE)
 
 supabase_url = os.getenv("SUPABASE_URL", "").strip()
-email = os.getenv("TEST_EMAIL", "").strip()
-password = os.getenv("TEST_PASSWORD", "").strip()
+email = os.getenv("TEST_PARENT_EMAIL", "").strip()
+password = os.getenv("TEST_PARENT_PASSWORD", "").strip()
 
 if not supabase_url:
     raise SystemExit("ERROR: SUPABASE_URL is missing")
 
 if not email:
-    raise SystemExit("ERROR: TEST_EMAIL is missing")
+    raise SystemExit("ERROR: TEST_PARENT_EMAIL is missing")
 
 if not password:
-    raise SystemExit("ERROR: TEST_PASSWORD is missing")
+    raise SystemExit("ERROR: TEST_PARENT_PASSWORD is missing")
 
 supabase_key = os.getenv("SUPABASE_KEY", "").strip()
 
