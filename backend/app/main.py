@@ -1,5 +1,5 @@
-
 from contextlib import asynccontextmanager
+import hmac
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
@@ -37,7 +37,8 @@ from app.time_usage import (
     record_time_usage,
     list_time_usage,
 )
-from app.profiles import get_profile
+from app.profiles import get_profile, lookup_profile_by_telegram_id
+from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.supabase_client import close_http_client, get_user_client, supabase
 
 from app.commands import (
@@ -124,6 +125,25 @@ async def list_families_endpoint(
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/telegram/lookup/{telegram_id}")
+async def telegram_lookup_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    if not TELEGRAM_BOT_SHARED_SECRET or not x_telegram_bot_key:
+        raise HTTPException(status_code=401, detail="Telegram bot authentication required")
+
+    if not hmac.compare_digest(x_telegram_bot_key, TELEGRAM_BOT_SHARED_SECRET):
+        raise HTTPException(status_code=403, detail="Invalid Telegram bot authentication")
+
+    profile = lookup_profile_by_telegram_id(telegram_id)
+
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Telegram ID not found")
+
+    return profile
 
 
 @app.get("/supabase-check")
