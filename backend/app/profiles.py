@@ -1,6 +1,5 @@
 from fastapi import HTTPException
 
-from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.supabase_client import get_user_client, supabase
 
 
