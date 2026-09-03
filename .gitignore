@@ -10,6 +10,8 @@ coverage/
 __pycache__/
 *.py[cod]
 .venv/
+*.session
+*.session-journal
 
 # AI agents
 agent/.venv/
