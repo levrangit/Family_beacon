@@ -1,0 +1,45 @@
+from __future__ import annotations
+
+from telethon import TelegramClient, events
+
+from telegram_bot.backend_client import BackendClient
+from telegram_bot.config import (
+    API_HASH,
+    API_ID,
+    BACKEND_URL,
+    BOT_TOKEN,
+    SESSION_PATH,
+    TELEGRAM_BOT_SHARED_SECRET,
+)
+from telegram_bot.handlers.start import handle_role, handle_start
+
+
+client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
+backend = BackendClient(BACKEND_URL, TELEGRAM_BOT_SHARED_SECRET)
+
+
+@client.on(events.NewMessage(pattern=r"^/start(?:@\w+)?$"))
+async def start_handler(event: events.NewMessage.Event) -> None:
+    await handle_start(event, backend)
+
+
+@client.on(events.CallbackQuery(data=b"role:parent"))
+async def parent_role_handler(event: events.CallbackQuery.Event) -> None:
+    await handle_role(event)
+
+
+@client.on(events.CallbackQuery(data=b"role:child"))
+async def child_role_handler(event: events.CallbackQuery.Event) -> None:
+    await handle_role(event)
+
+
+async def main() -> None:
+    await client.start(bot_token=BOT_TOKEN)
+    print("Family Beacon Telegram bot started")
+    await client.run_until_disconnected()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())
