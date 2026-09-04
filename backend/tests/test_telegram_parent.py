@@ -176,6 +176,7 @@ def test_list_invites_reports_active_used_expired_and_revoked():
             "created_at": now.isoformat(),
         },
     ]
+    service = TelegramParentService(FakeAdminClient(tables))
 
     result = service.list_invites(123456)
     statuses = {item["invite_id"]: item["status"] for item in result}
@@ -251,6 +252,6 @@ def test_non_parent_profile_is_rejected():
     try:
         service.get_family(123456)
     except ValueError as exc:
-        assert str(exc) == "Parent profile not found"
+        assert str(exc) == "Telegram account is not an active parent"
     else:
         raise AssertionError("Expected non-parent profile to be rejected")
