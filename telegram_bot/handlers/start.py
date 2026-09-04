@@ -218,6 +218,7 @@ async def handle_parent_action(
         }
         lines = ["📨 Мои приглашения", ""]
         for index, invite in enumerate(invites, start=1):
+            code = invite.get("code") or "—"
             expires_at = str(invite.get("expires_at", "—"))
             try:
                 expires_at = datetime.fromisoformat(
@@ -230,6 +231,7 @@ async def handle_parent_action(
             lines.extend(
                 [
                     f"{index}. {status}",
+                    f"   Код: {code}",
                     f"   Действует до: {expires_at}",
                     "",
                 ]
