@@ -40,6 +40,7 @@ from app.time_usage import (
 from app.profiles import get_profile, lookup_profile_by_telegram_id
 from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.supabase_client import close_http_client, get_user_client, supabase
+from app.telegram_parent import TelegramParentService
 
 from app.commands import (
     CreateCommandRequest,
@@ -144,6 +145,91 @@ async def telegram_lookup_endpoint(
         raise HTTPException(status_code=404, detail="Telegram ID not found")
 
     return profile
+
+
+def _telegram_parent_service(x_telegram_bot_key: str | None) -> TelegramParentService:
+    if not TELEGRAM_BOT_SHARED_SECRET or not x_telegram_bot_key:
+        raise HTTPException(status_code=401, detail="Telegram bot authentication required")
+
+    if not hmac.compare_digest(x_telegram_bot_key, TELEGRAM_BOT_SHARED_SECRET):
+        raise HTTPException(status_code=403, detail="Invalid Telegram bot authentication")
+
+    try:
+        return TelegramParentService()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/telegram/parent/profile/{telegram_id}")
+async def telegram_parent_profile_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.get_profile(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/telegram/parent/family/{telegram_id}")
+async def telegram_parent_family_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.get_family(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/telegram/parent/children/{telegram_id}")
+async def telegram_parent_children_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.get_children(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/telegram/parent/invites/{telegram_id}")
+async def telegram_parent_invites_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.list_invites(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/telegram/parent/invites/{telegram_id}")
+async def telegram_parent_create_invite_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.create_child_invite(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete("/telegram/parent/account/{telegram_id}")
+async def telegram_parent_delete_account_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.delete_parent_account(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/supabase-check")
