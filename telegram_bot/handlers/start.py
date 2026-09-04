@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from telethon import Button, events
 
 from telegram_bot.backend_client import BackendClient
@@ -13,6 +15,22 @@ WELCOME_TEXT = (
 ROLE_BUTTONS = [
     [Button.inline("👨 Родитель", b"role:parent")],
     [Button.inline("👦 Ребёнок", b"role:child")],
+]
+
+PARENT_MENU_TEXT = "👨 Family Beacon\n\nВыберите действие:"
+PARENT_MENU_BUTTONS = [
+    [Button.inline("🏠 Моя семья", b"parent:family")],
+    [Button.inline("👤 Мой профиль", b"parent:profile")],
+    [Button.inline("👶 Дети", b"parent:children")],
+    [Button.inline("📨 Мои приглашения", b"parent:invites")],
+    [Button.inline("➕ Выдать приглашение ребенку", b"parent:create_invite")],
+    [Button.inline("🗑 Забыть меня", b"parent:forget")],
+]
+
+BACK_BUTTON = [[Button.inline("◀️ Назад", b"parent:menu")]]
+FORGET_CONFIRM_BUTTONS = [
+    [Button.inline("❌ Отмена", b"parent:forget:cancel")],
+    [Button.inline("🗑 Да, удалить всё", b"parent:forget:confirm")],
 ]
 
 PARENT_LOGIN_TEXT = (
@@ -35,11 +53,6 @@ PARENT_ERROR_TEXT = (
     "Проверьте данные и попробуйте снова с командой /start."
 )
 
-PARENT_MENU_TEXT = (
-    "👨 С возвращением в Family Beacon!\n\n"
-    "Вы зарегистрированы как родитель."
-)
-
 ADMIN_MENU_TEXT = (
     "🛡 С возвращением в Family Beacon!\n\n"
     "Вы зарегистрированы как администратор."
@@ -50,6 +63,22 @@ CHILD_MENU_TEXT = (
     "Вы зарегистрированы как ребёнок."
 )
 
+FORGET_CONFIRM_TEXT = (
+    "⚠️ Вы действительно хотите забыть себя?\n\n"
+    "Будут удалены:\n"
+    "• ваш профиль\n"
+    "• семья\n"
+    "• дети\n"
+    "• устройства\n"
+    "• приглашения\n"
+    "• связанные данные\n\n"
+    "Это действие необратимо."
+)
+
+FORGET_SUCCESS_TEXT = (
+    "✅ Все данные вашего аккаунта удалены.\n\n"
+    "Если захотите зарегистрироваться снова, отправьте /start."
+)
 
 registration_sessions: dict[int, RegistrationSession] = {}
 
@@ -70,7 +99,7 @@ async def handle_start(event: events.NewMessage.Event, backend: BackendClient) -
         if identity_type == "profile":
             role = identity.get("role")
             if role == "parent":
-                await event.respond(PARENT_MENU_TEXT)
+                await event.respond(PARENT_MENU_TEXT, buttons=PARENT_MENU_BUTTONS)
                 return
             if role == "admin":
                 await event.respond(ADMIN_MENU_TEXT)
@@ -98,6 +127,161 @@ async def handle_role(event: events.CallbackQuery.Event) -> None:
         await event.edit(PARENT_LOGIN_TEXT)
     elif data == b"role:child":
         await event.edit("👦 Вы выбрали роль «Ребёнок».\n\nСледующий шаг — регистрация.")
+
+
+async def handle_parent_action(
+    event: events.CallbackQuery.Event,
+    backend: BackendClient,
+) -> None:
+    await event.answer()
+
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+
+    data = event.data or b""
+
+    if data == b"parent:menu":
+        await event.edit(PARENT_MENU_TEXT, buttons=PARENT_MENU_BUTTONS)
+        return
+
+    if data == b"parent:family":
+        try:
+            family = await backend.get_parent_family(telegram_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить информацию о семье.", buttons=BACK_BUTTON)
+            return
+
+        children = family.get("children") or []
+        text = (
+            "🏠 Моя семья\n\n"
+            f"Название: {family.get('name', '—')}\n"
+            f"Детей: {len(children)}"
+        )
+        await event.edit(text, buttons=BACK_BUTTON)
+        return
+
+    if data == b"parent:profile":
+        try:
+            profile = await backend.get_parent_profile(telegram_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить профиль.", buttons=BACK_BUTTON)
+            return
+
+        email = profile.get("email") or "—"
+        status = "активен" if profile.get("is_active") else "неактивен"
+        text = (
+            "👤 Мой профиль\n\n"
+            f"Логин: {email}\n"
+            f"Telegram ID: {profile.get('telegram_id', '—')}\n"
+            f"Роль: {profile.get('role', '—')}\n"
+            f"Статус: {status}"
+        )
+        await event.edit(text, buttons=BACK_BUTTON)
+        return
+
+    if data == b"parent:children":
+        try:
+            children = await backend.get_parent_children(telegram_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить список детей.", buttons=BACK_BUTTON)
+            return
+
+        if not children:
+            await event.edit("👶 Дети\n\nДетей пока нет.", buttons=BACK_BUTTON)
+            return
+
+        lines = ["👶 Дети", ""]
+        for child in children:
+            status = "активен" if child.get("is_active") else "неактивен"
+            lines.append(f"• {child.get('name', '—')} — {status}")
+
+        await event.edit("\n".join(lines), buttons=BACK_BUTTON)
+        return
+
+    if data == b"parent:invites":
+        try:
+            invites = await backend.list_parent_invites(telegram_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить приглашения.", buttons=BACK_BUTTON)
+            return
+
+        if not invites:
+            await event.edit("📨 Мои приглашения\n\nПриглашений пока нет.", buttons=BACK_BUTTON)
+            return
+
+        status_labels = {
+            "active": "🟢 Активен",
+            "used": "⚪ Использован",
+            "expired": "🔴 Истёк",
+            "revoked": "🚫 Отозван",
+        }
+        lines = ["📨 Мои приглашения", ""]
+        for index, invite in enumerate(invites, start=1):
+            expires_at = str(invite.get("expires_at", "—"))
+            try:
+                expires_at = datetime.fromisoformat(
+                    expires_at.replace("Z", "+00:00")
+                ).strftime("%d.%m.%Y %H:%M UTC")
+            except ValueError:
+                pass
+
+            status = status_labels.get(invite.get("status"), "❓ Неизвестен")
+            lines.extend(
+                [
+                    f"{index}. {status}",
+                    f"   Действует до: {expires_at}",
+                    "",
+                ]
+            )
+
+        await event.edit("\n".join(lines).rstrip(), buttons=BACK_BUTTON)
+        return
+
+    if data == b"parent:create_invite":
+        try:
+            invite = await backend.create_parent_invite(telegram_id)
+        except Exception:
+            await event.edit("❌ Не удалось создать приглашение.", buttons=BACK_BUTTON)
+            return
+
+        expires_at = str(invite.get("expires_at", "—"))
+        try:
+            expires_at = datetime.fromisoformat(
+                expires_at.replace("Z", "+00:00")
+            ).strftime("%d.%m.%Y %H:%M UTC")
+        except ValueError:
+            pass
+
+        text = (
+            "🎟 Приглашение создано!\n\n"
+            f"Код: {invite.get('code', '—')}\n\n"
+            f"Действительно до: {expires_at}\n\n"
+            "Передайте этот код ребёнку."
+        )
+        await event.edit(text, buttons=BACK_BUTTON)
+        return
+
+    if data == b"parent:forget":
+        await event.edit(FORGET_CONFIRM_TEXT, buttons=FORGET_CONFIRM_BUTTONS)
+        return
+
+    if data == b"parent:forget:cancel":
+        await event.edit(PARENT_MENU_TEXT, buttons=PARENT_MENU_BUTTONS)
+        return
+
+    if data == b"parent:forget:confirm":
+        try:
+            await backend.delete_parent_account(telegram_id)
+        except Exception:
+            await event.edit(
+                "❌ Не удалось удалить аккаунт. Данные не были подтверждены как удалённые.\n\n"
+                "Попробуйте ещё раз позже.",
+                buttons=BACK_BUTTON,
+            )
+            return
+
+        await event.edit(FORGET_SUCCESS_TEXT)
 
 
 async def handle_registration_message(
