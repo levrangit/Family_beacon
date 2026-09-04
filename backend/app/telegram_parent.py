@@ -7,6 +7,9 @@ from app.invite_code import generate_invite_code, hash_invite_code
 from app.supabase_client import get_admin_client
 
 
+DEFAULT_FAMILY_NAME = "Моя семья"
+
+
 class TelegramParentService:
     def __init__(self, admin_client: Any | None = None) -> None:
         self.admin_client = admin_client or get_admin_client()
@@ -47,6 +50,51 @@ class TelegramParentService:
             raise ValueError("Family not found")
 
         return str(members[0]["family_id"])
+
+    def _get_or_create_family_id(self, profile_id: str) -> str:
+        response = (
+            self.admin_client
+            .table("family_members")
+            .select("family_id")
+            .eq("profile_id", profile_id)
+            .eq("member_type", "parent")
+            .order("created_at")
+            .limit(1)
+            .execute()
+        )
+
+        members = response.data or []
+        if members:
+            return str(members[0]["family_id"])
+
+        family_response = (
+            self.admin_client
+            .table("families")
+            .insert({"name": DEFAULT_FAMILY_NAME})
+            .execute()
+        )
+        families = family_response.data or []
+        if not families:
+            raise ValueError("Family could not be created")
+
+        family_id = str(families[0]["id"])
+
+        member_response = (
+            self.admin_client
+            .table("family_members")
+            .insert(
+                {
+                    "family_id": family_id,
+                    "profile_id": profile_id,
+                    "member_type": "parent",
+                }
+            )
+            .execute()
+        )
+        if not member_response.data:
+            raise ValueError("Parent could not be added to family")
+
+        return family_id
 
     def get_profile(self, telegram_id: int) -> dict[str, Any]:
         profile = self._get_parent_profile(telegram_id)
@@ -143,7 +191,8 @@ class TelegramParentService:
 
     def create_child_invite(self, telegram_id: int) -> dict[str, Any]:
         profile = self._get_parent_profile(telegram_id)
-        family_id = self._get_family_id(str(profile["id"]))
+        profile_id = str(profile["id"])
+        family_id = self._get_or_create_family_id(profile_id)
 
         code = generate_invite_code()
         code_hash = hash_invite_code(code)
@@ -154,7 +203,7 @@ class TelegramParentService:
         response = self.admin_client.table("family_invites").insert(
             {
                 "family_id": family_id,
-                "created_by": str(profile["id"]),
+                "created_by": profile_id,
                 "code_hash": code_hash,
                 "expires_at": expires_at,
             }
