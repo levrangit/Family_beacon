@@ -1,25 +1,25 @@
-# Telegram Bot — Current State Analysis
+# Telegram Bot — анализ текущего состояния
 
-**Date:** 2026-09-05  
-**Repository:** `levrangit/Family_beacon`  
-**Branch:** `develop`  
-**Scope:** `telegram_bot/`, related backend Telegram tests/services, and Telegram-related Supabase migrations/state.  
-**Changes during analysis:** none before this document was created.
+**Дата:** 2026-09-05  
+**Репозиторий:** `levrangit/Family_beacon`  
+**Ветка:** `develop`  
+**Область анализа:** `telegram_bot/`, связанные Telegram-тесты/сервисы backend, а также Telegram-миграции и состояние Supabase.  
+**Изменения во время анализа:** до создания этого документа изменений не было.
 
-## 1. Executive summary
+## 1. Краткое резюме
 
-The Telegram bot is an existing implementation, not a placeholder. The parent-facing flow is substantially implemented: `/start`, Telegram-ID lookup, parent registration, parent profile/family/children views, family invites, and account deletion UI/backend wiring are present.
+Telegram-бот уже реализован и не является заготовкой. Пользовательский поток для родителя реализован в значительной степени: `/start`, поиск по Telegram ID, регистрация родителя, просмотр профиля/семьи/детей, семейные приглашения, а также интерфейс и backend-связка для удаления аккаунта.
 
-The main current gaps and inconsistencies are:
+Основные текущие пробелы и несоответствия:
 
-1. Child registration through Telegram is only a stub in the current bot UI.
-2. GitHub contains migration `024_parent_account_deletion.sql`, but the inspected Supabase migration state stops at `023`; the `delete_parent_account` RPC is not present in the current database function list.
-3. The parent-registration backend tests call `/auth/register-parent` without `X-Telegram-Bot-Key`, while the current endpoint requires that header. This explains the previously observed `401 Telegram bot authentication required` when the header is omitted.
-4. The backend Telegram tests mock the account-deletion RPC, so they do not prove that the RPC exists in the live Supabase database.
+1. Регистрация ребенка через Telegram в текущем интерфейсе бота является только заглушкой.
+2. В GitHub присутствует миграция `024_parent_account_deletion.sql`, но проверенное состояние миграций Supabase заканчивается на `023`; RPC `delete_parent_account` отсутствует в списке функций текущей базы данных.
+3. Тесты backend для регистрации родителя вызывают `/auth/register-parent` без `X-Telegram-Bot-Key`, тогда как текущий endpoint требует этот заголовок. Это объясняет ранее наблюдавшийся `401 Telegram bot authentication required`, если заголовок не передан.
+4. Telegram-тесты backend используют mock для RPC удаления аккаунта, поэтому не подтверждают наличие этого RPC в рабочей базе Supabase.
 
-No project code, migrations, database schema, or configuration were modified as part of the analysis. The only repository change authorized after the analysis is this documentation file.
+В ходе анализа код проекта, миграции, схема базы данных и конфигурация не изменялись. Единственное изменение репозитория, разрешенное после анализа, — этот документ.
 
-## 2. `telegram_bot/` structure
+## 2. Структура `telegram_bot/`
 
 ```text
 telegram_bot/
@@ -37,64 +37,64 @@ telegram_bot/
     └── test_registration.py
 ```
 
-## 3. Telegram bot layer
+## 3. Слой Telegram-бота
 
 ### `bot.py`
 
-The bot uses Telethon. It creates a `TelegramClient`, creates a `BackendClient`, registers handlers for `/start`, registration messages, role callbacks, and `parent:*` callbacks, then starts with the configured bot token and runs until disconnected.
+Бот использует Telethon. Он создает `TelegramClient`, создает `BackendClient`, регистрирует обработчики для `/start`, сообщений регистрации, callback'ов выбора роли и callback'ов `parent:*`, затем запускается с настроенным токеном бота и работает до отключения.
 
 ### `config.py`
 
-Required environment variables:
+Обязательные переменные окружения:
 
 - `TELEGRAM_API_ID`
 - `TELEGRAM_API_HASH`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_BOT_SHARED_SECRET`
 
-Optional configuration includes `FAMILY_BEACON_BACKEND_URL` (default `http://127.0.0.1:8000`) and `TELEGRAM_SESSION_PATH`.
+Необязательная конфигурация включает `FAMILY_BEACON_BACKEND_URL` (по умолчанию `http://127.0.0.1:8000`) и `TELEGRAM_SESSION_PATH`.
 
 ### `backend_client.py`
 
-The client communicates with FastAPI over HTTP and sends `X-Telegram-Bot-Key` on requests. Implemented operations cover Telegram-ID lookup, parent registration, profile, family, children, invites, invite creation, and parent account deletion.
+Клиент взаимодействует с FastAPI по HTTP и передает заголовок `X-Telegram-Bot-Key`. Реализованы операции поиска по Telegram ID, регистрации родителя, получения профиля, семьи, детей, приглашений, создания приглашения и удаления аккаунта родителя.
 
 ### `registration.py`
 
-Registration uses an in-memory `RegistrationSession` state machine. Parent registration progresses through login and password states and returns the Telegram ID, login, and password to the handler for backend registration. Registration state is not persisted.
+Регистрация использует находящуюся в памяти state machine `RegistrationSession`. Регистрация родителя проходит состояния ввода логина и пароля, после чего Telegram ID, логин и пароль передаются обработчику для регистрации через backend. Состояние регистрации не сохраняется между перезапусками.
 
 ### `handlers/start.py`
 
-The `/start` flow first looks up the sender's Telegram ID. Existing parents receive the parent menu; admin/child roles receive role-specific messages; unknown Telegram IDs receive role selection.
+Поток `/start` сначала ищет Telegram ID отправителя. Существующие родители получают родительское меню; для ролей admin/child выводятся соответствующие сообщения; неизвестные Telegram ID получают выбор роли.
 
-The parent menu contains:
+Родительское меню содержит:
 
-- My family
-- My profile
-- Children
-- My invitations
-- Issue an invitation to a child
-- Forget me
+- Моя семья
+- Мой профиль
+- Дети
+- Мои приглашения
+- Выдать приглашение ребенку
+- Забыть меня
 
-Parent registration is implemented as a two-step login/password conversation.
+Регистрация родителя реализована как двухэтапный диалог: логин/почта и пароль.
 
-The child role handler currently only reports that the next step is registration; there is no complete child registration flow in the inspected Telegram handler.
+Обработчик роли ребенка в текущем состоянии только сообщает, что следующим шагом будет регистрация; полноценный поток регистрации ребенка в проверенном Telegram-обработчике отсутствует.
 
-## 4. Backend Telegram layer
+## 4. Telegram-слой backend
 
-The FastAPI application contains Telegram-specific endpoints for lookup and parent operations, plus `/auth/register-parent`.
+FastAPI-приложение содержит специальные Telegram endpoint'ы для поиска и операций родителя, а также `/auth/register-parent`.
 
-The Telegram endpoints are protected by the shared secret header `X-Telegram-Bot-Key`. Parent operations additionally verify that the Telegram ID belongs to an active parent.
+Telegram endpoint'ы защищены общим секретным заголовком `X-Telegram-Bot-Key`. Операции родителя дополнительно проверяют, что указанный Telegram ID принадлежит активному родителю.
 
-`TelegramParentService` handles:
+`TelegramParentService` отвечает за:
 
-- parent profile retrieval;
-- family retrieval;
-- child listing;
-- invite listing;
-- invite creation;
-- parent account deletion.
+- получение профиля родителя;
+- получение семьи;
+- получение списка детей;
+- получение списка приглашений;
+- создание приглашения;
+- удаление аккаунта родителя.
 
-The Telegram layer therefore follows this architecture:
+Таким образом, Telegram-слой имеет следующую архитектуру:
 
 ```text
 Telegram / Telethon
@@ -110,98 +110,98 @@ TelegramParentService
 Supabase
 ```
 
-## 5. Parent registration
+## 5. Регистрация родителя
 
-Current flow:
+Текущий поток:
 
 ```text
 /start
-  -> Parent
-  -> enter e-mail/login
-  -> enter password
+  -> Родитель
+  -> ввод e-mail/логина
+  -> ввод пароля
   -> POST /auth/register-parent
   -> Supabase Auth sign_up
 ```
 
-The registration request includes `telegram_id`, login/e-mail, and password. The backend passes `telegram_id` into Supabase Auth user metadata.
+Запрос регистрации содержит `telegram_id`, логин/e-mail и пароль. Backend передает `telegram_id` в metadata пользователя Supabase Auth.
 
-The database trigger/migration path then supports creation of the corresponding profile and Telegram ID.
+Затем механизм database trigger/миграций поддерживает создание соответствующего профиля и Telegram ID.
 
-Important test mismatch: `backend/tests/test_parent_registration_endpoint.py` invokes `/auth/register-parent` without `X-Telegram-Bot-Key`, although the current endpoint requires that header. Therefore those tests are stale relative to the current endpoint contract unless the authentication dependency is overridden.
+Важное несоответствие тестов: `backend/tests/test_parent_registration_endpoint.py` вызывает `/auth/register-parent` без `X-Telegram-Bot-Key`, хотя текущий endpoint требует этот заголовок. Поэтому эти тесты не соответствуют текущему контракту endpoint'а, если только зависимость аутентификации не переопределяется в тесте.
 
-## 6. Family invites
+## 6. Семейные приглашения
 
-Migration `019` creates `family_invites` with hashed invite codes and lifecycle fields including expiration, used, and revoked state.
+Миграция `019` создает таблицу `family_invites` с хешированными кодами приглашений и полями жизненного цикла, включая срок действия, использование и отзыв приглашения.
 
-Migration `020` adds the `create_family_invite` RPC and related family-parent authorization policies.
+Миграция `020` добавляет RPC `create_family_invite` и связанные политики авторизации родителя семьи.
 
-Migration `021` adds invite redemption logic.
+Миграция `021` добавляет логику погашения/активации приглашения.
 
-Migration `022` extends redemption so a parent is added to `family_members`.
+Миграция `022` расширяет эту логику так, чтобы родитель добавлялся в `family_members`.
 
-Migration `023` adds a unique index for non-null child Telegram IDs.
+Миграция `023` добавляет уникальный индекс для непустых Telegram ID детей.
 
-The Telegram parent menu already exposes invite creation and invite listing.
+Родительское меню Telegram уже предоставляет создание приглашения и просмотр списка приглашений.
 
-## 7. Child Telegram identity
+## 7. Telegram-идентификатор ребенка
 
-Migration `017` added `children.telegram_id`.
+Миграция `017` добавила `children.telegram_id`.
 
-Migration `023` enforces uniqueness for non-null child Telegram IDs.
+Миграция `023` обеспечивает уникальность непустых `children.telegram_id`.
 
-The live Supabase schema inspected during the analysis contains `children.telegram_id bigint` and `profiles.telegram_id bigint`.
+В проверенной рабочей схеме Supabase присутствуют `children.telegram_id bigint` и `profiles.telegram_id bigint`.
 
-The database is therefore prepared to associate a child with a Telegram account, but the Telegram bot's child registration flow is not yet implemented.
+Таким образом, база данных уже подготовлена для привязки ребенка к Telegram-аккаунту, но поток регистрации ребенка в Telegram-боте пока не реализован.
 
-## 8. Account deletion discrepancy
+## 8. Несоответствие с удалением аккаунта
 
-GitHub contains `024_parent_account_deletion.sql`, defining the `delete_parent_account(p_profile_id uuid)` RPC.
+В GitHub присутствует `024_parent_account_deletion.sql`, определяющая RPC `delete_parent_account(p_profile_id uuid)`.
 
-The inspected live Supabase migration state stops at migration `023`. The inspected database function list contains `create_family_invite`, `handle_new_user`, `is_family_parent`, and `redeem_family_invite`, but not `delete_parent_account`.
+Проверенное состояние миграций Supabase заканчивается миграцией `023`. В списке функций проверенной базы данных присутствуют `create_family_invite`, `handle_new_user`, `is_family_parent` и `redeem_family_invite`, но отсутствует `delete_parent_account`.
 
-The current Telegram/backend code calls the deletion RPC. Consequently, the "Forget me" path is wired in the application but is not backed by the corresponding RPC in the inspected live database.
+Текущий код Telegram/backend вызывает RPC удаления. Следовательно, путь «Забыть меня» подключен на уровне приложения, но в проверенной рабочей базе данных отсутствует соответствующий RPC.
 
-This should be treated as a deployment/schema synchronization issue, not as a reason to create a second deletion implementation.
+Это следует рассматривать как проблему синхронизации развертывания/схемы, а не как основание для создания второй реализации удаления аккаунта.
 
-## 9. Tests
+## 9. Тесты
 
-`telegram_bot/tests/test_registration.py` covers the registration state machine.
+`telegram_bot/tests/test_registration.py` проверяет state machine регистрации.
 
-`telegram_bot/tests/test_backend_client.py` checks HTTP client behavior and the shared-secret header.
+`telegram_bot/tests/test_backend_client.py` проверяет поведение HTTP-клиента и наличие общего секретного заголовка.
 
-`telegram_bot/tests/test_parent_menu.py` covers parent menu behavior and account-deletion confirmation.
+`telegram_bot/tests/test_parent_menu.py` проверяет поведение родительского меню и подтверждение удаления аккаунта.
 
-`backend/tests/test_telegram_parent.py` covers service behavior for family, invites, and deletion. Deletion tests mock the RPC and therefore do not verify live Supabase availability of `delete_parent_account`.
+`backend/tests/test_telegram_parent.py` проверяет поведение сервиса для семьи, приглашений и удаления. Тесты удаления используют mock RPC и поэтому не подтверждают наличие `delete_parent_account` в рабочей базе Supabase.
 
-## 10. Current readiness matrix
+## 10. Текущая матрица готовности
 
-| Capability | Telegram | Backend | Supabase | State |
+| Возможность | Telegram | Backend | Supabase | Состояние |
 |---|---:|---:|---:|---|
-| `/start` | Yes | Yes | Yes | Implemented |
-| Telegram-ID lookup | Yes | Yes | Yes | Implemented |
-| Parent registration | Yes | Yes | Yes | Mostly implemented |
-| Parent profile | Yes | Yes | Yes | Implemented |
-| Family view | Yes | Yes | Yes | Implemented |
-| Children list | Yes | Yes | Yes | Implemented |
-| Create child invite | Yes | Yes | Yes | Implemented |
-| List invites | Yes | Yes | Yes | Implemented |
-| Invite redemption | Not in current Telegram flow | Present in DB/backend | Yes | Separate flow |
-| Child Telegram registration | Stub | Incomplete for Telegram flow | Schema prepared | Not implemented |
-| Unique child Telegram ID | N/A | N/A | Yes | Implemented |
-| Forget-me/account deletion | Yes | Yes | Missing live RPC | Broken against inspected live DB |
-| Admin Telegram UI | Minimal message | N/A | N/A | Not implemented |
-| Telegram tests | Yes | Yes | Mocked for some DB operations | Partial coverage |
+| `/start` | Да | Да | Да | Реализовано |
+| Поиск по Telegram ID | Да | Да | Да | Реализовано |
+| Регистрация родителя | Да | Да | Да | В основном реализовано |
+| Профиль родителя | Да | Да | Да | Реализовано |
+| Просмотр семьи | Да | Да | Да | Реализовано |
+| Список детей | Да | Да | Да | Реализовано |
+| Создание приглашения ребенку | Да | Да | Да | Реализовано |
+| Список приглашений | Да | Да | Да | Реализовано |
+| Активация приглашения | Не реализовано в текущем Telegram-потоке | Есть в БД/backend | Да | Отдельный поток |
+| Регистрация ребенка через Telegram | Заглушка | Не завершена для Telegram-потока | Схема подготовлена | Не реализовано |
+| Уникальный Telegram ID ребенка | Н/Д | Н/Д | Да | Реализовано |
+| «Забыть меня» / удаление аккаунта | Да | Да | RPC отсутствует в рабочей БД | Не работает с проверенной рабочей БД |
+| Telegram-интерфейс администратора | Минимальное сообщение | Н/Д | Н/Д | Не реализовано |
+| Telegram-тесты | Да | Да | Для некоторых операций БД используются mock'и | Частичное покрытие |
 
-## 11. Recommended next development sequence
+## 11. Рекомендуемая последовательность дальнейшей разработки
 
-Before adding new Telegram features:
+Перед добавлением новых функций Telegram-бота:
 
-1. Verify and reconcile migration `024` against the live Supabase migration history.
-2. Update/align parent-registration tests with the required `X-Telegram-Bot-Key` contract.
-3. Define the complete child registration/redeem flow, using the existing invite and `children.telegram_id` database design rather than introducing a parallel mechanism.
-4. Add tests for the child Telegram flow and for live-contract boundaries where appropriate.
-5. Only then continue expanding Telegram UI/features.
+1. Проверить и синхронизировать миграцию `024` с историей миграций рабочей Supabase.
+2. Обновить/синхронизировать тесты регистрации родителя с требованием `X-Telegram-Bot-Key`.
+3. Определить полный поток регистрации/активации ребенка, используя существующую архитектуру приглашений и `children.telegram_id`, а не создавая параллельный механизм.
+4. Добавить тесты Telegram-потока ребенка и, где это необходимо, тесты границ контракта с рабочими сервисами.
+5. Только после этого продолжать расширение Telegram-интерфейса и функциональности.
 
-## 12. Important project rule
+## 12. Важное правило проекта
 
-No implementation or database changes should be made in `Family_beacon` without the user's explicit authorization. This analysis was read-only; the current document is the sole repository write authorized by the user after the analysis.
+Никакие изменения реализации или базы данных в `Family_beacon` не должны выполняться без явного разрешения пользователя. Этот анализ был выполнен в режиме только чтения; текущий документ был единственной записью в репозиторий, разрешенной пользователем после проведения анализа.
