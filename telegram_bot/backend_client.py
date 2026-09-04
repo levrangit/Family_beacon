@@ -12,27 +12,35 @@ class BackendClient:
 
     async def lookup_telegram_id(self, telegram_id: int) -> dict[str, Any] | None:
         headers = {"X-Telegram-Bot-Key": self.shared_secret}
-
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
                 f"{self.base_url}/telegram/lookup/{telegram_id}",
                 headers=headers,
             )
-
         if response.status_code == 404:
             return None
-
         response.raise_for_status()
         return response.json()
 
-    def register_parent(
+    async def register_parent(
         self,
         telegram_id: int,
         login: str,
         password: str,
     ) -> dict[str, Any]:
-        return {
+        headers = {"X-Telegram-Bot-Key": self.shared_secret}
+        payload = {
             "telegram_id": telegram_id,
             "login": login,
             "password": password,
         }
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                f"{self.base_url}/auth/register-parent",
+                json=payload,
+                headers=headers,
+            )
+
+        response.raise_for_status()
+        return response.json()
