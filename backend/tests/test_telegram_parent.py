@@ -139,6 +139,7 @@ def test_list_invites_reports_active_used_expired_and_revoked():
             "id": "active",
             "family_id": "family-1",
             "created_by": "parent-1",
+            "code": "ACTIVE123",
             "expires_at": (now + timedelta(hours=1)).isoformat(),
             "used_at": None,
             "used_by": None,
@@ -149,6 +150,7 @@ def test_list_invites_reports_active_used_expired_and_revoked():
             "id": "used",
             "family_id": "family-1",
             "created_by": "parent-1",
+            "code": "USED1234",
             "expires_at": (now + timedelta(hours=1)).isoformat(),
             "used_at": now.isoformat(),
             "used_by": "child-profile",
@@ -159,6 +161,7 @@ def test_list_invites_reports_active_used_expired_and_revoked():
             "id": "expired",
             "family_id": "family-1",
             "created_by": "parent-1",
+            "code": "EXPIRED1",
             "expires_at": (now - timedelta(hours=1)).isoformat(),
             "used_at": None,
             "used_by": None,
@@ -169,6 +172,7 @@ def test_list_invites_reports_active_used_expired_and_revoked():
             "id": "revoked",
             "family_id": "family-1",
             "created_by": "parent-1",
+            "code": "REVOKED1",
             "expires_at": (now + timedelta(hours=1)).isoformat(),
             "used_at": None,
             "used_by": None,
@@ -180,12 +184,19 @@ def test_list_invites_reports_active_used_expired_and_revoked():
 
     result = service.list_invites(123456)
     statuses = {item["invite_id"]: item["status"] for item in result}
+    codes = {item["invite_id"]: item["code"] for item in result}
 
     assert statuses == {
         "active": "active",
         "used": "used",
         "expired": "expired",
         "revoked": "revoked",
+    }
+    assert codes == {
+        "active": "ACTIVE123",
+        "used": "USED1234",
+        "expired": "EXPIRED1",
+        "revoked": "REVOKED1",
     }
 
 
@@ -202,6 +213,7 @@ def test_create_child_invite_uses_existing_family():
     assert result["expires_at"]
     assert tables["family_invites"][0]["family_id"] == "family-1"
     assert tables["family_invites"][0]["created_by"] == "parent-1"
+    assert tables["family_invites"][0]["code"] == result["code"]
     assert tables["family_invites"][0]["code_hash"]
 
 
@@ -229,6 +241,7 @@ def test_create_child_invite_creates_family_when_parent_has_none():
     ]
     assert tables["family_invites"][0]["family_id"] == "1"
     assert tables["family_invites"][0]["created_by"] == "parent-1"
+    assert tables["family_invites"][0]["code"] == result["code"]
 
 
 def test_delete_parent_account_calls_database_rpc_and_auth_delete():
