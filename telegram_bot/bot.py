@@ -12,6 +12,7 @@ from telegram_bot.config import (
     TELEGRAM_BOT_SHARED_SECRET,
 )
 from telegram_bot.handlers.start import (
+    handle_parent_action,
     handle_registration_message,
     handle_role,
     handle_start,
@@ -42,6 +43,11 @@ async def parent_role_handler(event: events.CallbackQuery.Event) -> None:
 @client.on(events.CallbackQuery(data=b"role:child"))
 async def child_role_handler(event: events.CallbackQuery.Event) -> None:
     await handle_role(event)
+
+
+@client.on(events.CallbackQuery(pattern=r"^parent:"))
+async def parent_action_handler(event: events.CallbackQuery.Event) -> None:
+    await handle_parent_action(event, backend)
 
 
 async def main() -> None:
