@@ -50,6 +50,21 @@ class FakeBackend:
             "email": "parent@example.com",
         }
 
+    async def get_parent_family(self, _telegram_id):
+        return {"name": "Test family", "children": []}
+
+    async def get_parent_children(self, _telegram_id):
+        return []
+
+    async def list_parent_invites(self, _telegram_id):
+        return [
+            {
+                "code": "ABCD1234",
+                "expires_at": "2026-09-06T01:30:00+00:00",
+                "status": "active",
+            }
+        ]
+
     async def create_parent_invite(self, telegram_id):
         self.created_invites.append(telegram_id)
         return {
@@ -92,6 +107,20 @@ def test_profile_action_returns_profile_information():
     assert "Мой профиль" in text
     assert "parent@example.com" in text
     assert "123456" in text
+
+
+def test_invites_action_returns_codes_and_expiration():
+    event = FakeCallbackEvent(123456, b"parent:invites")
+    backend = FakeBackend()
+
+    asyncio.run(handle_parent_action(event, backend))
+
+    assert event.answered is True
+    text, buttons = event.edits[0]
+    assert "📨 Мои приглашения" in text
+    assert "Код: ABCD1234" in text
+    assert "Действует до: 06.09.2026 01:30 UTC" in text
+    assert buttons[0][0].text == "◀️ Назад"
 
 
 def test_create_invite_action_returns_code_and_expiration():
