@@ -154,7 +154,9 @@ class TelegramParentService:
         response = (
             self.admin_client
             .table("family_invites")
-            .select("id, family_id, created_by, expires_at, used_at, used_by, revoked_at, created_at")
+            .select(
+                "id, family_id, created_by, code, expires_at, used_at, used_by, revoked_at, created_at"
+            )
             .eq("created_by", profile_id)
             .order("created_at", desc=True)
             .execute()
@@ -179,6 +181,7 @@ class TelegramParentService:
             result.append(
                 {
                     "invite_id": str(invite["id"]),
+                    "code": invite.get("code"),
                     "expires_at": str(invite["expires_at"]),
                     "used_at": invite.get("used_at"),
                     "revoked_at": invite.get("revoked_at"),
@@ -204,6 +207,7 @@ class TelegramParentService:
             {
                 "family_id": family_id,
                 "created_by": profile_id,
+                "code": code,
                 "code_hash": code_hash,
                 "expires_at": expires_at,
             }
