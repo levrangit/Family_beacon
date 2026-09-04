@@ -14,10 +14,46 @@ ROLE_BUTTONS = [
     [Button.inline("👦 Ребёнок", b"role:child")],
 ]
 
+PARENT_MENU_TEXT = (
+    "👨 С возвращением в Family Beacon!\n\n"
+    "Вы зарегистрированы как родитель."
+)
+
+ADMIN_MENU_TEXT = (
+    "🛡 С возвращением в Family Beacon!\n\n"
+    "Вы зарегистрированы как администратор."
+)
+
+CHILD_MENU_TEXT = (
+    "👦 С возвращением в Family Beacon!\n\n"
+    "Вы зарегистрированы как ребёнок."
+)
+
 
 async def handle_start(event: events.NewMessage.Event, backend: BackendClient) -> None:
-    """Temporary registration stub: every /start is treated as a new user."""
-    del backend
+    """Handle /start using the Telegram ID lookup flow."""
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+
+    identity = await backend.lookup_telegram_id(telegram_id)
+
+    if identity is not None:
+        identity_type = identity.get("type")
+
+        if identity_type == "profile":
+            role = identity.get("role")
+            if role == "parent":
+                await event.respond(PARENT_MENU_TEXT)
+                return
+            if role == "admin":
+                await event.respond(ADMIN_MENU_TEXT)
+                return
+
+        if identity_type == "child":
+            await event.respond(CHILD_MENU_TEXT)
+            return
+
     await event.respond(WELCOME_TEXT, buttons=ROLE_BUTTONS)
 
 
