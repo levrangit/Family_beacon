@@ -11,7 +11,11 @@ from telegram_bot.config import (
     SESSION_PATH,
     TELEGRAM_BOT_SHARED_SECRET,
 )
-from telegram_bot.handlers.start import handle_role, handle_start
+from telegram_bot.handlers.start import (
+    handle_registration_message,
+    handle_role,
+    handle_start,
+)
 
 
 client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
@@ -21,6 +25,13 @@ backend = BackendClient(BACKEND_URL, TELEGRAM_BOT_SHARED_SECRET)
 @client.on(events.NewMessage(pattern=r"^/start(?:@\w+)?$"))
 async def start_handler(event: events.NewMessage.Event) -> None:
     await handle_start(event, backend)
+
+
+@client.on(events.NewMessage())
+async def registration_message_handler(event: events.NewMessage.Event) -> None:
+    if event.raw_text and event.raw_text.startswith("/"):
+        return
+    await handle_registration_message(event, backend)
 
 
 @client.on(events.CallbackQuery(data=b"role:parent"))
