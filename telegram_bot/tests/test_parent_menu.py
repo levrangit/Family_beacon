@@ -30,6 +30,7 @@ class FakeCallbackEvent:
 class FakeBackend:
     def __init__(self):
         self.deleted = []
+        self.created_invites = []
 
     async def lookup_telegram_id(self, telegram_id):
         return {
@@ -47,6 +48,13 @@ class FakeBackend:
             "role": "parent",
             "is_active": True,
             "email": "parent@example.com",
+        }
+
+    async def create_parent_invite(self, telegram_id):
+        self.created_invites.append(telegram_id)
+        return {
+            "code": "ABCD1234",
+            "expires_at": "2026-09-06T01:30:00+00:00",
         }
 
     async def delete_parent_account(self, telegram_id):
@@ -84,6 +92,23 @@ def test_profile_action_returns_profile_information():
     assert "Мой профиль" in text
     assert "parent@example.com" in text
     assert "123456" in text
+
+
+def test_create_invite_action_returns_code_and_expiration():
+    event = FakeCallbackEvent(123456, b"parent:create_invite")
+    backend = FakeBackend()
+
+    asyncio.run(handle_parent_action(event, backend))
+
+    assert event.answered is True
+    assert backend.created_invites == [123456]
+
+    text, buttons = event.edits[0]
+    assert "🎟 Приглашение создано!" in text
+    assert "Код: ABCD1234" in text
+    assert "Действительно до: 06.09.2026 01:30 UTC" in text
+    assert "Передайте этот код ребёнку." in text
+    assert buttons[0][0].text == "◀️ Назад"
 
 
 def test_forget_confirmation_deletes_account_after_confirmation():
