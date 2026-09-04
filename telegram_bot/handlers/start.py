@@ -16,19 +16,8 @@ ROLE_BUTTONS = [
 
 
 async def handle_start(event: events.NewMessage.Event, backend: BackendClient) -> None:
-    telegram_id = event.sender_id
-    if telegram_id is None:
-        return
-
-    profile = await backend.lookup_telegram_id(telegram_id)
-
-    if profile is not None and profile.get("role") == "parent":
-        await event.respond(
-            "👋 С возвращением в Family Beacon!\n\n"
-            "Вы уже зарегистрированы как родитель."
-        )
-        return
-
+    """Temporary registration stub: every /start is treated as a new user."""
+    del backend
     await event.respond(WELCOME_TEXT, buttons=ROLE_BUTTONS)
 
 
