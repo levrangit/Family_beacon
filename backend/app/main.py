@@ -198,7 +198,14 @@ class RedeemFamilyInviteRequest(BaseModel):
 @app.post("/auth/register-parent")
 async def register_parent_endpoint(
     data: ParentRegistrationRequest,
+    x_telegram_bot_key: str | None = Header(default=None),
 ):
+    if not TELEGRAM_BOT_SHARED_SECRET or not x_telegram_bot_key:
+        raise HTTPException(status_code=401, detail="Telegram bot authentication required")
+
+    if not hmac.compare_digest(x_telegram_bot_key, TELEGRAM_BOT_SHARED_SECRET):
+        raise HTTPException(status_code=403, detail="Invalid Telegram bot authentication")
+
     if supabase is None:
         raise HTTPException(
             status_code=503,
