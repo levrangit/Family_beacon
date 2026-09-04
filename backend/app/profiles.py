@@ -50,14 +50,13 @@ def lookup_profile_by_telegram_id(telegram_id: int):
             .table("profiles")
             .select("id, display_name, telegram_id, role, is_active")
             .eq("telegram_id", telegram_id)
-            .maybe_single()
             .execute()
         )
 
-        if profile_response.data is not None:
+        if profile_response.data:
             return {
                 "type": "profile",
-                **profile_response.data,
+                **profile_response.data[0],
             }
 
         child_response = (
@@ -65,14 +64,13 @@ def lookup_profile_by_telegram_id(telegram_id: int):
             .table("children")
             .select("id, family_id, name, avatar_url, telegram_id, is_active")
             .eq("telegram_id", telegram_id)
-            .maybe_single()
             .execute()
         )
 
-        if child_response.data is not None:
+        if child_response.data:
             return {
                 "type": "child",
-                **child_response.data,
+                **child_response.data[0],
             }
 
         return None
