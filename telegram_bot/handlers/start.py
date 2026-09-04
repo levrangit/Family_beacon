@@ -223,7 +223,7 @@ async def handle_parent_action(
             try:
                 expires_at = datetime.fromisoformat(
                     expires_at.replace("Z", "+00:00")
-                ).strftime("%d.%m.%Y %H:%M UTC")
+                ).strftime("%d.%m.%Y")
             except ValueError:
                 pass
 
@@ -251,7 +251,7 @@ async def handle_parent_action(
         try:
             expires_at = datetime.fromisoformat(
                 expires_at.replace("Z", "+00:00")
-            ).strftime("%d.%m.%Y %H:%M UTC")
+            ).strftime("%d.%m.%Y")
         except ValueError:
             pass
 
