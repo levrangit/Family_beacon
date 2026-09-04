@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from app.family_invites import create_family_invite
 from app.invite_code import generate_invite_code, hash_invite_code
 from app.supabase_client import get_admin_client
 
@@ -102,13 +101,13 @@ class TelegramParentService:
 
     def list_invites(self, telegram_id: int) -> list[dict[str, Any]]:
         profile = self._get_parent_profile(telegram_id)
-        family_id = self._get_family_id(str(profile["id"]))
+        profile_id = str(profile["id"])
 
         response = (
             self.admin_client
             .table("family_invites")
             .select("id, family_id, created_by, expires_at, used_at, used_by, revoked_at, created_at")
-            .eq("family_id", family_id)
+            .eq("created_by", profile_id)
             .order("created_at", desc=True)
             .execute()
         )
@@ -117,7 +116,9 @@ class TelegramParentService:
         result: list[dict[str, Any]] = []
 
         for invite in response.data or []:
-            expires_at = datetime.fromisoformat(str(invite["expires_at"]).replace("Z", "+00:00"))
+            expires_at = datetime.fromisoformat(
+                str(invite["expires_at"]).replace("Z", "+00:00")
+            )
             if invite.get("revoked_at") is not None:
                 status = "revoked"
             elif invite.get("used_at") is not None:
