@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from telethon import Button, events
 
 from telegram_bot.backend_client import BackendClient
@@ -133,7 +131,7 @@ async def handle_registration_message(
         try:
             registration_data = session.complete_parent_registration(text)
             await backend.register_parent(**registration_data)
-        except (ValueError, Exception):
+        except Exception:
             await event.respond(PARENT_ERROR_TEXT)
             return
 
