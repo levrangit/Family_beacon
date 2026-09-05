@@ -23,6 +23,8 @@ from app.device_updates import (
     list_device_updates,
     get_device_update,
 )
+from app.releases import list_releases
+from app.update_decision import check_device_update
 from app.time_policies import (
     CreateTimePolicyRequest,
     UpdateTimePolicyRequest,
@@ -134,6 +136,28 @@ async def list_families_endpoint(
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/releases")
+async def list_releases_endpoint(
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return list_releases(access_token=access_token)
+
+
+@app.get("/devices/{device_id}/update-check")
+async def check_device_update_endpoint(
+    device_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return check_device_update(
+        access_token=access_token,
+        device_id=device_id,
+    )
 
 
 @app.get("/telegram/lookup/{telegram_id}")
