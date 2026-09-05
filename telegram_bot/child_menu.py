@@ -5,7 +5,7 @@ from typing import Any
 from telethon import Button
 
 
-CHILD_MENU_TEXT = "👦 Family Beacon\n\nВыберите действие:"
+CHILD_MENU_TEXT = "👦 Family Beacon"
 CHILD_MENU_BUTTONS = [
     [Button.inline("👤 Мой профиль", b"child:profile")],
     [Button.inline("⏱ Моё время", b"child:time")],
@@ -18,7 +18,7 @@ CHILD_BACK_BUTTON = [[Button.inline("◀️ Назад", b"child:menu")]]
 
 def format_child_menu(child: dict[str, Any]) -> str:
     name = child.get("name") or "—"
-    return f"👦 Family Beacon\n\nПривет, {name}!\n\nВыберите действие:"
+    return f"👦 Family Beacon\n\nПривет, {name}!"
 
 
 def format_child_profile(child: dict[str, Any]) -> str:
