@@ -3,7 +3,13 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
+from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.main import app
+
+
+TELEGRAM_BOT_HEADERS = {
+    "X-Telegram-Bot-Key": TELEGRAM_BOT_SHARED_SECRET,
+}
 
 
 def test_parent_registration_endpoint_returns_user_and_token():
@@ -27,6 +33,7 @@ def test_parent_registration_endpoint_returns_user_and_token():
                 "login": "parent2@example.com",
                 "password": "secret123",
             },
+            headers=TELEGRAM_BOT_HEADERS,
         )
 
         assert response.status_code == 200
@@ -61,6 +68,7 @@ def test_parent_registration_endpoint_requires_supabase_configuration():
                 "login": "parent2@example.com",
                 "password": "secret123",
             },
+            headers=TELEGRAM_BOT_HEADERS,
         )
 
         assert response.status_code == 503
@@ -89,6 +97,7 @@ def test_parent_registration_endpoint_delegates_to_register_parent_service():
                     "login": "parent2@example.com",
                     "password": "secret123",
                 },
+                headers=TELEGRAM_BOT_HEADERS,
             )
 
         assert response.status_code == 200
