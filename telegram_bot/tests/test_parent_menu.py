@@ -251,7 +251,8 @@ def test_profile_action_returns_profile_information():
 
     assert event.answered is True
     text, _buttons = event.edits[0]
-    assert "Мой профиль" in text
+    assert "👤 Профиль" in text
+    assert "Мой профиль" not in text
     assert "parent@example.com" in text
     assert "Telegram ID:" not in text
     assert "123456" not in text
@@ -265,7 +266,8 @@ def test_invites_action_returns_codes_and_expiration():
 
     assert event.answered is True
     text, buttons = event.edits[0]
-    assert "📨 Мои приглашения" in text
+    assert "📨 Приглашения" in text
+    assert "Мои приглашения" not in text
     assert "Код: ABCD1234" in text
     assert "Действует до: 06.09.2026" in text
     assert buttons[0][0].text == "➕ Выдать приглашение"
