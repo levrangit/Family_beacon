@@ -102,9 +102,13 @@ class TelegramChildService:
             .execute()
         )
 
+        policy = policy_response.data
+        if isinstance(policy, list):
+            policy = policy[0] if policy else None
+
         return {
             "child": child,
             "devices": devices_response.data or [],
             "today_usage": {"used_minutes": used_minutes},
-            "today_policy": policy_response.data,
+            "today_policy": policy,
         }
