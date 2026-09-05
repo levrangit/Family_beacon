@@ -34,6 +34,7 @@ PARENT_MENU_BUTTONS = [
     [Button.inline("🗑 Забыть меня", b"parent:forget")],
 ]
 BACK_BUTTON = [[Button.inline("◀️ Назад", b"parent:menu")]]
+FAMILY_RENAME_BUTTONS = [[Button.inline("◀️ Отмена", b"parent:family:rename:cancel")]]
 INVITES_BUTTONS = [
     [Button.inline("➕ Выдать приглашение", b"parent:create_invite")],
     [Button.inline("◀️ Назад", b"parent:menu")],
@@ -69,18 +70,52 @@ FORGET_CONFIRM_TEXT = (
     "• семья\n"
     "• дети\n"
     "• устройства\n"
-    "• приглашения\n"
-    "• связанные данные\n\n"
+    "• приглашения\n\n"
     "Это действие необратимо."
 )
 FORGET_SUCCESS_TEXT = "✅ Все данные вашего аккаунта удалены.\n\nЕсли захотите зарегистрироваться снова, отправьте /start."
+FAMILY_RENAME_TEXT = "✏️ Переименование семьи\n\nВведите новое название семьи:"
+FAMILY_RENAME_ERROR_TEXT = "❌ Не удалось изменить название семьи.\n\nПопробуйте ввести другое название."
 registration_sessions: dict[int, RegistrationSession] = {}
+family_rename_sessions: set[int] = set()
+
+
+def _parent_family_buttons(family: dict) -> list[list[Button]]:
+    buttons: list[list[Button]] = [
+        [Button.inline(f"🏠 {family.get('name') or 'Моя семья'}", b"parent:family:rename")]
+    ]
+    children = family.get("children") or []
+    for child in children:
+        name = child.get("name") or "Без имени"
+        child_id = str(child.get("id"))
+        buttons.append([Button.inline(f"👶 {name}", f"parent:family:child:{child_id}".encode())])
+    buttons.append([Button.inline("➕ Выдать приглашение", b"parent:create_invite")])
+    buttons.append([Button.inline("◀️ Назад", b"parent:menu")])
+    return buttons
+
+
+async def _show_parent_family(event: events.CallbackQuery.Event, backend: BackendClient, *, edit: bool = True) -> None:
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+    family = await backend.get_parent_family(telegram_id)
+    children = family.get("children") or []
+    lines = ["🌟 Семейный маяк", "", "🏠 Моя семья", ""]
+    if children:
+        lines.append("👶 Дети")
+    else:
+        lines.extend(["👶 Дети", "", "Дети не зарегистрированы."])
+    text = "\n".join(lines)
+    if edit:
+        await event.edit(text, buttons=_parent_family_buttons(family))
+
 
 async def handle_start(event: events.NewMessage.Event, backend: BackendClient) -> None:
     telegram_id = event.sender_id
     if telegram_id is None:
         return
     registration_sessions.pop(telegram_id, None)
+    family_rename_sessions.discard(telegram_id)
     identity = await backend.lookup_telegram_id(telegram_id)
     if identity is not None:
         identity_type = identity.get("type")
@@ -96,6 +131,7 @@ async def handle_start(event: events.NewMessage.Event, backend: BackendClient) -
             await event.respond(format_child_menu(identity), buttons=CHILD_MENU_BUTTONS)
             return
     await event.respond(WELCOME_TEXT, buttons=ROLE_BUTTONS)
+
 
 async def handle_role(event: events.CallbackQuery.Event) -> None:
     await event.answer()
@@ -114,6 +150,7 @@ async def handle_role(event: events.CallbackQuery.Event) -> None:
         registration_sessions[telegram_id] = session
         await event.edit(CHILD_INVITE_TEXT)
 
+
 async def handle_parent_action(event: events.CallbackQuery.Event, backend: BackendClient) -> None:
     await event.answer()
     telegram_id = event.sender_id
@@ -125,13 +162,69 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
         return
     if data == b"parent:family":
         try:
-            family = await backend.get_parent_family(telegram_id)
+            await _show_parent_family(event, backend)
         except Exception:
             await event.edit("❌ Не удалось загрузить информацию о семье.", buttons=BACK_BUTTON)
+        return
+    if data == b"parent:family:rename":
+        family_rename_sessions.add(telegram_id)
+        try:
+            family = await backend.get_parent_family(telegram_id)
+            current_name = family.get("name") or "Моя семья"
+            await event.edit(
+                f"✏️ Переименование семьи\n\nТекущее название:\n{current_name}\n\nВведите новое название семьи:",
+                buttons=FAMILY_RENAME_BUTTONS,
+            )
+        except Exception:
+            family_rename_sessions.discard(telegram_id)
+            await event.edit("❌ Не удалось загрузить информацию о семье.", buttons=BACK_BUTTON)
+        return
+    if data == b"parent:family:rename:cancel":
+        family_rename_sessions.discard(telegram_id)
+        try:
+            await _show_parent_family(event, backend)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить информацию о семье.", buttons=BACK_BUTTON)
+        return
+    if data.startswith(b"parent:family:child:"):
+        child_id = data.decode().split(":", 3)[3]
+        try:
+            dashboard = await backend.get_parent_child_dashboard(telegram_id, child_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить данные ребёнка.", buttons=BACK_BUTTON)
             return
-        children = family.get("children") or []
-        text = "🏠 Моя семья\n\n" f"Название: {family.get('name', '—')}\n" f"Детей: {len(children)}"
-        await event.edit(text, buttons=BACK_BUTTON)
+        child = dashboard.get("child") or {}
+        name = child.get("name") or "Без имени"
+        buttons = [
+            [Button.inline("👤 Мой профиль", f"parent:child:{child_id}:profile".encode())],
+            [Button.inline("⏱ Моё время", f"parent:child:{child_id}:time".encode())],
+            [Button.inline("💻 Мои устройства", f"parent:child:{child_id}:devices".encode())],
+            [Button.inline("◀️ Назад", b"parent:family")],
+        ]
+        await event.edit(f"👶 {name}", buttons=buttons)
+        return
+    if data.startswith(b"parent:child:"):
+        parts = data.decode().split(":")
+        if len(parts) != 4:
+            return
+        child_id, section = parts[2], parts[3]
+        try:
+            dashboard = await backend.get_parent_child_dashboard(telegram_id, child_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить данные ребёнка.", buttons=BACK_BUTTON)
+            return
+        child = dashboard.get("child") or {}
+        name = child.get("name") or "Без имени"
+        child_menu_button = Button.inline("◀️ Назад", f"parent:family:child:{child_id}".encode())
+        if section == "profile":
+            text = format_child_profile(child).replace("👤 Мой профиль", f"👤 {name} — профиль")
+        elif section == "time":
+            text = format_child_time(dashboard).replace("⏱ Моё время", f"⏱ {name} — время")
+        elif section == "devices":
+            text = format_child_devices(dashboard).replace("💻 Мои устройства", f"💻 {name} — устройства")
+        else:
+            return
+        await event.edit(text, buttons=[[child_menu_button]])
         return
     if data == b"parent:profile":
         try:
@@ -151,13 +244,14 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
             await event.edit("❌ Не удалось загрузить список детей.", buttons=BACK_BUTTON)
             return
         if not children:
-            await event.edit("👶 Дети\n\nДетей пока нет.", buttons=BACK_BUTTON)
+            await event.edit("👶 Дети\n\nДети не зарегистрированы.", buttons=BACK_BUTTON)
             return
-        lines = ["👶 Дети", ""]
-        for child in children:
-            status = "активен" if child.get("is_active") else "неактивен"
-            lines.append(f"• {child.get('name', '—')} — {status}")
-        await event.edit("\n".join(lines), buttons=BACK_BUTTON)
+        buttons = [
+            [Button.inline(f"👶 {child.get('name') or 'Без имени'}", f"parent:family:child:{child.get('id')}".encode())]
+            for child in children
+        ]
+        buttons.append([Button.inline("◀️ Назад", b"parent:menu")])
+        await event.edit("👶 Дети", buttons=buttons)
         return
     if data == b"parent:invites":
         try:
@@ -209,6 +303,7 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
             return
         await event.edit(FORGET_SUCCESS_TEXT)
 
+
 async def handle_child_action(event: events.CallbackQuery.Event, backend: BackendClient) -> None:
     await event.answer()
     telegram_id = event.sender_id
@@ -244,16 +339,34 @@ async def handle_child_action(event: events.CallbackQuery.Event, backend: Backen
         await event.edit(format_child_devices(dashboard), buttons=CHILD_BACK_BUTTON)
         return
 
+
 async def handle_registration_message(event: events.NewMessage.Event, backend: BackendClient) -> None:
     """Process text entered during parent or child registration."""
     telegram_id = event.sender_id
     if telegram_id is None:
         return
-    session = registration_sessions.get(telegram_id)
-    if session is None:
-        return
     text = (event.raw_text or "").strip()
     if not text:
+        return
+    if telegram_id in family_rename_sessions:
+        try:
+            family = await backend.rename_parent_family(telegram_id, text)
+        except Exception:
+            await event.respond(FAMILY_RENAME_ERROR_TEXT)
+            return
+        family_rename_sessions.discard(telegram_id)
+        await event.respond(f"✅ Название семьи изменено.\n\nНовое название:\n{family.get('name') or text}")
+        try:
+            family = await backend.get_parent_family(telegram_id)
+            await event.respond(
+                "🌟 Семейный маяк\n\n🏠 Моя семья",
+                buttons=_parent_family_buttons(family),
+            )
+        except Exception:
+            pass
+        return
+    session = registration_sessions.get(telegram_id)
+    if session is None:
         return
     if session.role == "parent":
         if session.state == "waiting_login":
