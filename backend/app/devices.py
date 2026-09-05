@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.supabase_client import get_user_client
 
@@ -21,11 +21,10 @@ class CreateDeviceRequest(BaseModel):
 
 
 class UpdateDeviceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = None
     hostname: str | None = None
-    agent_version: str | None = None
-    is_online: bool | None = None
-    last_seen: str | None = None
 
 
 def create_device(
@@ -95,7 +94,8 @@ def list_devices(
             .table("devices")
             .select(
                 "id, child_id, device_id, name, platform, "
-                "hostname, agent_version, is_online, last_seen, "
+                "hostname, agent_version, target_agent_version, "
+                "update_status, is_online, last_seen, "
                 "created_at, updated_at"
             )
         )
@@ -135,7 +135,8 @@ def get_device(
             .table("devices")
             .select(
                 "id, child_id, device_id, name, platform, "
-                "hostname, agent_version, is_online, last_seen, "
+                "hostname, agent_version, target_agent_version, "
+                "update_status, is_online, last_seen, "
                 "created_at, updated_at"
             )
             .eq("id", device_id)
