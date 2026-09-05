@@ -143,9 +143,100 @@ class TelegramParentService:
             "children": children_response.data or [],
         }
 
+    def rename_family(self, telegram_id: int, name: str) -> dict[str, Any]:
+        normalized_name = name.strip()
+        if not normalized_name:
+            raise ValueError("Family name is required")
+        if len(normalized_name) > 50:
+            raise ValueError("Family name must be 50 characters or fewer")
+
+        profile = self._get_parent_profile(telegram_id)
+        family_id = self._get_family_id(str(profile["id"]))
+
+        response = (
+            self.admin_client
+            .table("families")
+            .update({"name": normalized_name})
+            .eq("id", family_id)
+            .execute()
+        )
+        families = response.data or []
+        if not families:
+            raise ValueError("Family could not be renamed")
+
+        return {
+            "id": str(families[0]["id"]),
+            "name": str(families[0]["name"]),
+        }
+
     def get_children(self, telegram_id: int) -> list[dict[str, Any]]:
         family = self.get_family(telegram_id)
         return family["children"]
+
+    def get_child_dashboard(self, telegram_id: int, child_id: str) -> dict[str, Any]:
+        profile = self._get_parent_profile(telegram_id)
+        family_id = self._get_family_id(str(profile["id"]))
+
+        child_response = (
+            self.admin_client
+            .table("children")
+            .select("id, family_id, name, avatar_url, telegram_id, is_active")
+            .eq("id", child_id)
+            .eq("family_id", family_id)
+            .limit(1)
+            .execute()
+        )
+        children = child_response.data or []
+        if not children:
+            raise ValueError("Child not found")
+
+        child = children[0]
+
+        devices_response = (
+            self.admin_client
+            .table("devices")
+            .select(
+                "id, child_id, device_id, name, platform, hostname, "
+                "agent_version, is_online, last_seen"
+            )
+            .eq("child_id", child_id)
+            .order("created_at")
+            .execute()
+        )
+
+        today = datetime.now(timezone.utc).date()
+        usage_response = (
+            self.admin_client
+            .table("time_usage")
+            .select("used_minutes")
+            .eq("child_id", child_id)
+            .eq("usage_date", today.isoformat())
+            .execute()
+        )
+        used_minutes = sum(
+            int(row.get("used_minutes") or 0)
+            for row in (usage_response.data or [])
+        )
+
+        day_of_week = (today.weekday() + 1) % 7
+        policy_response = (
+            self.admin_client
+            .table("time_policies")
+            .select("daily_limit_minutes, start_time, end_time, is_enabled")
+            .eq("child_id", child_id)
+            .eq("day_of_week", day_of_week)
+            .limit(1)
+            .execute()
+        )
+        policies = policy_response.data or []
+        policy = policies if isinstance(policies, dict) else (policies[0] if policies else None)
+
+        return {
+            "child": child,
+            "devices": devices_response.data or [],
+            "today_usage": {"used_minutes": used_minutes},
+            "today_policy": policy,
+        }
 
     def list_invites(self, telegram_id: int) -> list[dict[str, Any]]:
         profile = self._get_parent_profile(telegram_id)
