@@ -100,12 +100,7 @@ async def _show_parent_family(event: events.CallbackQuery.Event, backend: Backen
         return
     family = await backend.get_parent_family(telegram_id)
     children = family.get("children") or []
-    lines = ["🌟 Семейный маяк", "", "🏠 Моя семья", ""]
-    if children:
-        lines.append("👶 Дети")
-    else:
-        lines.extend(["👶 Дети", "", "Дети не зарегистрированы."])
-    text = "\n".join(lines)
+    text = "" if children else "Дети не зарегистрированы."
     if edit:
         await event.edit(text, buttons=_parent_family_buttons(family))
 
@@ -234,7 +229,7 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
             return
         email = profile.get("email") or "—"
         status = "активен" if profile.get("is_active") else "неактивен"
-        text = "👤 Мой профиль\n\n" f"Логин: {email}\n" f"Роль: {profile.get('role', '—')}\n" f"Статус: {status}"
+        text = "👤 Профиль\n\n" f"Логин: {email}\n" f"Роль: {profile.get('role', '—')}\n" f"Статус: {status}"
         await event.edit(text, buttons=BACK_BUTTON)
         return
     if data == b"parent:children":
@@ -260,10 +255,10 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
             await event.edit("❌ Не удалось загрузить приглашения.", buttons=BACK_BUTTON)
             return
         if not invites:
-            await event.edit("📨 Мои приглашения\n\nПриглашений пока нет.", buttons=INVITES_BUTTONS)
+            await event.edit("📨 Приглашения\n\nПриглашений пока нет.", buttons=INVITES_BUTTONS)
             return
         status_labels = {"active": "🟢 Активен", "used": "⚪ Использован", "expired": "🔴 Истёк", "revoked": "🚫 Отозван"}
-        lines = ["📨 Мои приглашения", ""]
+        lines = ["📨 Приглашения", ""]
         for index, invite in enumerate(invites, start=1):
             code = invite.get("code") or "—"
             expires_at = str(invite.get("expires_at", "—"))
@@ -358,10 +353,7 @@ async def handle_registration_message(event: events.NewMessage.Event, backend: B
         await event.respond(f"✅ Название семьи изменено.\n\nНовое название:\n{family.get('name') or text}")
         try:
             family = await backend.get_parent_family(telegram_id)
-            await event.respond(
-                "🌟 Семейный маяк\n\n🏠 Моя семья",
-                buttons=_parent_family_buttons(family),
-            )
+            await event.respond("", buttons=_parent_family_buttons(family))
         except Exception:
             pass
         return
