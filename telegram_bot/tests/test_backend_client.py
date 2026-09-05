@@ -71,6 +71,56 @@ def test_register_parent_sends_registration_data_to_backend(monkeypatch):
     asyncio.run(run_test())
 
 
+def test_register_child_sends_registration_data_to_backend(monkeypatch):
+    calls = []
+
+    def fake_async_client(**_kwargs):
+        return FakeAsyncClient(
+            calls,
+            response_payload={
+                "child_id": "child-1",
+                "family_id": "family-1",
+                "invite_id": "invite-1",
+            },
+        )
+
+    monkeypatch.setattr(
+        "telegram_bot.backend_client.httpx.AsyncClient",
+        fake_async_client,
+    )
+
+    client = BackendClient(
+        "http://127.0.0.1:8000",
+        "test-shared-secret",
+    )
+
+    async def run_test():
+        result = await client.register_child(
+            telegram_id=123456789,
+            invite_code="ABCD-2345",
+            child_name="Alice",
+        )
+
+        assert result == {
+            "child_id": "child-1",
+            "family_id": "family-1",
+            "invite_id": "invite-1",
+        }
+        assert calls == [
+            (
+                "http://127.0.0.1:8000/telegram/child/register",
+                {
+                    "telegram_id": 123456789,
+                    "invite_code": "ABCD-2345",
+                    "child_name": "Alice",
+                },
+                {"X-Telegram-Bot-Key": "test-shared-secret"},
+            )
+        ]
+
+    asyncio.run(run_test())
+
+
 def test_create_parent_invite_sends_telegram_id_and_shared_secret(monkeypatch):
     calls = []
 
