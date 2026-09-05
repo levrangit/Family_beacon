@@ -24,11 +24,9 @@ def format_child_menu(child: dict[str, Any]) -> str:
 def format_child_profile(child: dict[str, Any]) -> str:
     status = "активен" if child.get("is_active") else "неактивен"
     name = child.get("name") or "—"
-    telegram_id = child.get("telegram_id") or "—"
     return (
         "👤 Мой профиль\n\n"
         f"Имя: {name}\n"
-        f"Telegram ID: {telegram_id}\n"
         f"Статус: {status}"
     )
 
