@@ -21,6 +21,7 @@ from telegram_bot.handlers.start import (
     handle_start,
     registration_sessions,
 )
+from telegram_bot.version import get_project_version
 
 
 class FakeMessageEvent:
@@ -151,7 +152,7 @@ def test_registered_parent_start_shows_all_parent_actions():
 
     text, buttons = event.responses[0]
     assert text == PARENT_MENU_TEXT
-    assert text == "🌟 Семейный маяк"
+    assert text == f"🌟 Семейный маяк · {get_project_version()}"
     labels = [button.text for row in buttons for button in row]
     assert labels == [
         "🏠 Семья",
