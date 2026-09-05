@@ -27,7 +27,7 @@ ROLE_BUTTONS = [
     [Button.inline("👦 Ребёнок", b"role:child")],
 ]
 
-PARENT_MENU_TEXT = "👨 Family Beacon\n\nВыберите действие:"
+PARENT_MENU_TEXT = "👨 Family Beacon"
 PARENT_MENU_BUTTONS = [
     [Button.inline("🏠 Семья", b"parent:family")],
     [Button.inline("👤 Профиль", b"parent:profile")],
