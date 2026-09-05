@@ -3,23 +3,25 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
-from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.main import app
 
 
+TEST_TELEGRAM_BOT_KEY = "test-telegram-bot-key"
 TELEGRAM_BOT_HEADERS = {
-    "X-Telegram-Bot-Key": TELEGRAM_BOT_SHARED_SECRET,
+    "X-Telegram-Bot-Key": TEST_TELEGRAM_BOT_KEY,
 }
 
 
-def test_parent_registration_endpoint_returns_user_and_token():
+def test_parent_registration_endpoint_returns_user_and_token(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "TELEGRAM_BOT_SHARED_SECRET", TEST_TELEGRAM_BOT_KEY)
+
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.user = MagicMock(id="user-123")
     mock_response.session = MagicMock(access_token="access-token-123")
     mock_client.auth.sign_up.return_value = mock_response
-
-    from app import main
 
     original_supabase = main.supabase
     main.supabase = mock_client
@@ -53,8 +55,10 @@ def test_parent_registration_endpoint_returns_user_and_token():
         app.dependency_overrides.clear()
 
 
-def test_parent_registration_endpoint_requires_supabase_configuration():
-    from app import main
+def test_parent_registration_endpoint_requires_supabase_configuration(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "TELEGRAM_BOT_SHARED_SECRET", TEST_TELEGRAM_BOT_KEY)
 
     original_supabase = main.supabase
     main.supabase = None
@@ -78,8 +82,10 @@ def test_parent_registration_endpoint_requires_supabase_configuration():
         app.dependency_overrides.clear()
 
 
-def test_parent_registration_endpoint_delegates_to_register_parent_service():
-    from app import main
+def test_parent_registration_endpoint_delegates_to_register_parent_service(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "TELEGRAM_BOT_SHARED_SECRET", TEST_TELEGRAM_BOT_KEY)
 
     original_supabase = main.supabase
     main.supabase = MagicMock()
