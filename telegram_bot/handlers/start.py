@@ -56,6 +56,13 @@ PARENT_PASSWORD_TEXT = (
     "Пароль не будет сохранён в Telegram-боте."
 )
 
+PARENT_WEAK_PASSWORD_TEXT = (
+    "🔐 Пароль не прошёл проверку.\n\n"
+    "Похоже, пароль слишком простой. Придумайте более сложный пароль — "
+    "не менее 8 символов, с буквами и цифрами.\n\n"
+    "Попробуйте ввести новый пароль."
+)
+
 PARENT_SUCCESS_TEXT = (
     "✅ Регистрация завершена!\n\n"
     "Вы зарегистрированы как родитель."
@@ -414,6 +421,14 @@ async def handle_registration_message(
         if session.state == "waiting_password":
             try:
                 registration_data = session.complete_parent_registration(text)
+            except ValueError as exc:
+                if str(exc) == "Password is too weak":
+                    await event.respond(PARENT_WEAK_PASSWORD_TEXT)
+                else:
+                    await event.respond(f"❌ {exc}\n\n{PARENT_PASSWORD_TEXT}")
+                return
+
+            try:
                 await backend.register_parent(**registration_data)
             except Exception:
                 await event.respond(PARENT_ERROR_TEXT)
