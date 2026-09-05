@@ -199,9 +199,9 @@ def test_child_menu_loads_dashboard_without_refresh_button():
     assert "🌟 Семейный маяк" in text
     assert buttons == CHILD_MENU_BUTTONS
     assert [button.text for row in buttons for button in row] == [
-        "👤 Мой профиль",
-        "⏱ Моё время",
-        "💻 Мои устройства",
+        "👤 Профиль",
+        "⏱ Время",
+        "💻 Устройства",
     ]
 
 
