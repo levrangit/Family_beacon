@@ -149,10 +149,10 @@ def test_registered_parent_start_shows_all_parent_actions():
     assert "Family Beacon" in text
     labels = [button.text for row in buttons for button in row]
     assert labels == [
-        "Семья",
-        "Профиль",
-        "Дети",
-        "Приглашения",
+        "🏠 Семья",
+        "👤 Профиль",
+        "👶 Дети",
+        "📨 Приглашения",
         "🗑 Забыть меня",
     ]
 
@@ -254,7 +254,7 @@ def test_invites_action_returns_codes_and_expiration():
     assert "📨 Мои приглашения" in text
     assert "Код: ABCD1234" in text
     assert "Действует до: 06.09.2026" in text
-    assert buttons[0][0].text == "Выдать приглашение"
+    assert buttons[0][0].text == "➕ Выдать приглашение"
     assert buttons[1][0].text == "◀️ Назад"
 
 
@@ -272,7 +272,7 @@ def test_create_invite_action_returns_code_and_expiration():
     assert "Код: ABCD1234" in text
     assert "Действительно до: 06.09.2026" in text
     assert "Передайте этот код ребёнку." in text
-    assert buttons[0][0].text == "Выдать приглашение"
+    assert buttons[0][0].text == "➕ Выдать приглашение"
     assert buttons[1][0].text == "◀️ Назад"
 
 
