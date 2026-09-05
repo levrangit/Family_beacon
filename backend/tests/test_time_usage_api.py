@@ -62,3 +62,20 @@ def test_time_usage_rejects_negative_minutes(parent_client):
     assert response.json() == {
         "detail": "Usage minutes cannot be negative"
     }
+
+
+def test_time_usage_requires_device_id(parent_client):
+    response = parent_client.post(
+        "/time-usage",
+        json={
+            "child_id": CHILD_ID,
+            "usage_date": "2026-09-05",
+            "additional_minutes": 10,
+        },
+        timeout=10,
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Device ID is required"
+    }
