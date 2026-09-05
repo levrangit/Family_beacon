@@ -200,6 +200,8 @@ def test_child_profile_action_returns_profile_information():
 
     text, buttons = event.edits[0]
     assert text == format_child_profile(backend.child_dashboard["child"])
+    assert "Telegram ID:" not in text
+    assert "123456" not in text
     assert buttons[0][0].text == "◀️ Назад"
 
 
@@ -238,7 +240,8 @@ def test_profile_action_returns_profile_information():
     text, _buttons = event.edits[0]
     assert "Мой профиль" in text
     assert "parent@example.com" in text
-    assert "123456" in text
+    assert "Telegram ID:" not in text
+    assert "123456" not in text
 
 
 def test_invites_action_returns_codes_and_expiration():
