@@ -53,6 +53,25 @@ PARENT_ERROR_TEXT = (
     "Проверьте данные и попробуйте снова с командой /start."
 )
 
+CHILD_INVITE_TEXT = (
+    "👦 Регистрация ребёнка\n\n"
+    "Введите код приглашения, который выдал родитель."
+)
+
+CHILD_NAME_TEXT = "Введите имя ребёнка:"
+
+CHILD_SUCCESS_TEXT = (
+    "✅ Регистрация завершена!\n\n"
+    "Вы зарегистрированы как ребёнок."
+)
+
+CHILD_ERROR_TEXT = (
+    "❌ Не удалось завершить регистрацию ребёнка.\n\n"
+    "Код может быть неверным, просроченным, отозванным или уже использованным. "
+    "Также Telegram-аккаунт не может быть зарегистрирован повторно.\n\n"
+    "Попробуйте снова с командой /start."
+)
+
 ADMIN_MENU_TEXT = (
     "🛡 С возвращением в Family Beacon!\n\n"
     "Вы зарегистрированы как администратор."
@@ -126,7 +145,10 @@ async def handle_role(event: events.CallbackQuery.Event) -> None:
         registration_sessions[telegram_id] = session
         await event.edit(PARENT_LOGIN_TEXT)
     elif data == b"role:child":
-        await event.edit("👦 Вы выбрали роль «Ребёнок».\n\nСледующий шаг — регистрация.")
+        session = RegistrationSession(telegram_id=telegram_id)
+        session.start_child_registration()
+        registration_sessions[telegram_id] = session
+        await event.edit(CHILD_INVITE_TEXT)
 
 
 async def handle_parent_action(
@@ -290,36 +312,60 @@ async def handle_registration_message(
     event: events.NewMessage.Event,
     backend: BackendClient,
 ) -> None:
-    """Process text entered during parent registration."""
+    """Process text entered during parent or child registration."""
     telegram_id = event.sender_id
     if telegram_id is None:
         return
 
     session = registration_sessions.get(telegram_id)
-    if session is None or session.role != "parent":
+    if session is None:
         return
 
     text = (event.raw_text or "").strip()
     if not text:
         return
 
-    if session.state == "waiting_login":
-        try:
-            session.set_login(text)
-        except ValueError as exc:
-            await event.respond(f"❌ {exc}\n\n{PARENT_LOGIN_TEXT}")
+    if session.role == "parent":
+        if session.state == "waiting_login":
+            try:
+                session.set_login(text)
+            except ValueError as exc:
+                await event.respond(f"❌ {exc}\n\n{PARENT_LOGIN_TEXT}")
+                return
+
+            await event.respond(PARENT_PASSWORD_TEXT)
             return
 
-        await event.respond(PARENT_PASSWORD_TEXT)
-        return
+        if session.state == "waiting_password":
+            try:
+                registration_data = session.complete_parent_registration(text)
+                await backend.register_parent(**registration_data)
+            except Exception:
+                await event.respond(PARENT_ERROR_TEXT)
+                return
 
-    if session.state == "waiting_password":
-        try:
-            registration_data = session.complete_parent_registration(text)
-            await backend.register_parent(**registration_data)
-        except Exception:
-            await event.respond(PARENT_ERROR_TEXT)
+            registration_sessions.pop(telegram_id, None)
+            await event.respond(PARENT_SUCCESS_TEXT)
             return
 
-        registration_sessions.pop(telegram_id, None)
-        await event.respond(PARENT_SUCCESS_TEXT)
+    if session.role == "child":
+        if session.state == "waiting_invite_code":
+            try:
+                session.set_invite_code(text)
+            except ValueError as exc:
+                await event.respond(f"❌ {exc}\n\n{CHILD_INVITE_TEXT}")
+                return
+
+            await event.respond(CHILD_NAME_TEXT)
+            return
+
+        if session.state == "waiting_child_name":
+            try:
+                registration_data = session.complete_child_registration(text)
+                await backend.register_child(**registration_data)
+            except Exception:
+                await event.respond(CHILD_ERROR_TEXT)
+                return
+
+            registration_sessions.pop(telegram_id, None)
+            await event.respond(CHILD_SUCCESS_TEXT)
