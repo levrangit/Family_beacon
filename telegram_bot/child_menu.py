@@ -4,8 +4,10 @@ from typing import Any
 
 from telethon import Button
 
+from telegram_bot.version import get_project_version
 
-CHILD_MENU_TEXT = "🌟 Семейный маяк"
+
+CHILD_MENU_TEXT = f"🌟 Семейный маяк · {get_project_version()}"
 CHILD_MENU_BUTTONS = [
     [Button.inline("👤 Профиль", b"child:profile")],
     [Button.inline("⏱ Время", b"child:time")],
@@ -17,7 +19,7 @@ CHILD_BACK_BUTTON = [[Button.inline("◀️ Назад", b"child:menu")]]
 
 def format_child_menu(child: dict[str, Any]) -> str:
     name = child.get("name") or "—"
-    return f"🌟 Семейный маяк\n\nПривет, {name}!"
+    return f"{CHILD_MENU_TEXT}\n\nПривет, {name}!"
 
 
 def format_child_profile(child: dict[str, Any]) -> str:
