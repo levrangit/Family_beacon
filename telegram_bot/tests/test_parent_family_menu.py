@@ -79,8 +79,8 @@ def test_family_menu_shows_children_as_buttons_and_family_name_as_button():
     asyncio.run(handle_parent_action(event, backend))
 
     text, buttons = event.edits[0]
+    assert text == ""
     assert "🏠 Моя семья" in buttons[0][0].text
-    assert "👶 Дети" in text
     assert [button.text for row in buttons[1:3] for button in row] == ["👶 Мария", "👶 Иван"]
     assert buttons[-2][0].text == "➕ Выдать приглашение"
     assert buttons[-1][0].text == "◀️ Назад"
@@ -93,8 +93,10 @@ def test_family_menu_without_children_shows_not_registered_message():
 
     asyncio.run(handle_parent_action(event, backend))
 
-    text, _buttons = event.edits[0]
-    assert text.endswith("Дети не зарегистрированы.")
+    text, buttons = event.edits[0]
+    assert text == "Дети не зарегистрированы."
+    assert buttons[-2][0].text == "➕ Выдать приглашение"
+    assert buttons[-1][0].text == "◀️ Назад"
 
 
 def test_family_name_button_opens_rename_prompt():
@@ -119,7 +121,7 @@ def test_family_rename_updates_name_and_returns_to_family_menu():
     asyncio.run(handle_registration_message(event, backend))
 
     assert "Семья Леопольдовых" in event.responses[0][0]
-    assert event.responses[1][0] == "🌟 Семейный маяк\n\n🏠 Моя семья"
+    assert event.responses[1][0] == ""
     assert "🏠 Семья Леопольдовых" in event.responses[1][1][0][0].text
     assert 123456 not in family_rename_sessions
 
