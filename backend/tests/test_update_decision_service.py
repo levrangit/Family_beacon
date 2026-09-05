@@ -67,7 +67,7 @@ def test_check_device_update_rejects_incompatible_release(monkeypatch):
             {"id": "release-1", "component": "agent", "version": "2.0.0", "artifact_ref": "a", "checksum": "c", "release_notes": None},
         ]),
         _compatibility_table([
-            {"id": "compat-1", "release_id": "release-1", "platform": "windows", "min_agent_version": None, "max_agent_version": "1.5.0"},
+            {"id": "compat-1", "release_id": "release-1", "platform": "windows", "min_agent_version": None, "max_agent_version": "0.9.0"},
         ]),
     ]
     monkeypatch.setattr("app.update_decision.get_user_client", lambda token: client)
