@@ -8,7 +8,7 @@ from app.supabase_client import get_user_client, supabase_admin
 
 class RecordTimeUsageRequest(BaseModel):
     child_id: str
-    device_id: str
+    device_id: str | None = None
     usage_date: date
     additional_minutes: int
 
@@ -21,13 +21,25 @@ class DeviceRecordTimeUsageRequest(BaseModel):
 
 def record_time_usage(
     access_token: str,
-    device_id: str,
-    data: RecordTimeUsageRequest,
+    device_id: str | None = None,
+    data: RecordTimeUsageRequest | None = None,
 ):
+    if data is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Time usage data is required",
+        )
+
     if data.additional_minutes < 0:
         raise HTTPException(
             status_code=400,
             detail="Usage minutes cannot be negative",
+        )
+
+    if not device_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Device ID is required",
         )
 
     try:
