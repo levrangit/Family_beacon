@@ -95,10 +95,33 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    async def rename_parent_family(self, telegram_id: int, name: str) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.patch(
+                f"{self.base_url}/telegram/parent/family/{telegram_id}",
+                json={"name": name},
+                headers=self._headers(),
+            )
+        response.raise_for_status()
+        return response.json()
+
     async def get_parent_children(self, telegram_id: int) -> list[dict[str, Any]]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
                 f"{self.base_url}/telegram/parent/children/{telegram_id}",
+                headers=self._headers(),
+            )
+        response.raise_for_status()
+        return response.json()
+
+    async def get_parent_child_dashboard(
+        self,
+        telegram_id: int,
+        child_id: str,
+    ) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{self.base_url}/telegram/parent/children/{telegram_id}/{child_id}/dashboard",
                 headers=self._headers(),
             )
         response.raise_for_status()
