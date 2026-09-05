@@ -18,7 +18,7 @@ from telegram_bot.child_menu import (
 from telegram_bot.registration import RegistrationSession
 
 WELCOME_TEXT = (
-    "👋 Добро пожаловать в Family Beacon!\n\n"
+    "👋 Добро пожаловать в 🌟 Семейный маяк!\n\n"
     "Выберите свою роль, чтобы продолжить:"
 )
 
@@ -27,7 +27,7 @@ ROLE_BUTTONS = [
     [Button.inline("👦 Ребёнок", b"role:child")],
 ]
 
-PARENT_MENU_TEXT = "👨 Family Beacon"
+PARENT_MENU_TEXT = "🌟 Семейный маяк"
 PARENT_MENU_BUTTONS = [
     [Button.inline("🏠 Семья", b"parent:family")],
     [Button.inline("👤 Профиль", b"parent:profile")],
@@ -93,7 +93,7 @@ CHILD_ERROR_TEXT = (
 )
 
 ADMIN_MENU_TEXT = (
-    "🛡 С возвращением в Family Beacon!\n\n"
+    "🛡 С возвращением в 🌟 Семейный маяк!\n\n"
     "Вы зарегистрированы как администратор."
 )
 
@@ -436,6 +436,7 @@ async def handle_registration_message(
 
             registration_sessions.pop(telegram_id, None)
             await event.respond(PARENT_SUCCESS_TEXT)
+            await event.respond(PARENT_MENU_TEXT, buttons=PARENT_MENU_BUTTONS)
             return
 
     if session.role == "child":
@@ -459,3 +460,5 @@ async def handle_registration_message(
 
             registration_sessions.pop(telegram_id, None)
             await event.respond(CHILD_SUCCESS_TEXT)
+            await event.respond(CHILD_MENU_TEXT)
+            return
