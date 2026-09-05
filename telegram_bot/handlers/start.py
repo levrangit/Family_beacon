@@ -295,10 +295,9 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
         try:
             await backend.delete_parent_account(telegram_id)
         except Exception:
-            await event.edit("❌ Не удалось удалить данные аккаунта.\n\nПопробуйте ещё раз.", buttons=BACK_BUTTON)
+            await event.edit("❌ Не удалось удалить аккаунт. Данные не были подтверждены как удалённые.\n\nПопробуйте ещё раз позже.", buttons=BACK_BUTTON)
             return
         await event.edit(FORGET_SUCCESS_TEXT)
-        return
 
 
 async def handle_child_action(event: events.CallbackQuery.Event, backend: BackendClient) -> None:
@@ -308,18 +307,103 @@ async def handle_child_action(event: events.CallbackQuery.Event, backend: Backen
         return
     data = event.data or b""
     if data == b"child:menu":
+        try:
+            dashboard = await backend.get_child_dashboard(telegram_id)
+        except Exception:
+            try:
+                await event.edit("❌ Не удалось загрузить меню ребёнка.", buttons=CHILD_BACK_BUTTON)
+            except MessageNotModifiedError:
+                pass
+            return
+        await event.edit(format_child_menu(dashboard["child"]), buttons=CHILD_MENU_BUTTONS)
+        return
+    try:
         dashboard = await backend.get_child_dashboard(telegram_id)
-        await event.edit(format_child_menu(dashboard.get("child") or {}), buttons=CHILD_MENU_BUTTONS)
+    except Exception:
+        try:
+            await event.edit("❌ Не удалось загрузить данные ребёнка.", buttons=CHILD_BACK_BUTTON)
+        except MessageNotModifiedError:
+            pass
         return
     if data == b"child:profile":
-        dashboard = await backend.get_child_dashboard(telegram_id)
-        await event.edit(format_child_profile(dashboard.get("child") or {}), buttons=CHILD_BACK_BUTTON)
+        await event.edit(format_child_profile(dashboard["child"]), buttons=CHILD_BACK_BUTTON)
         return
     if data == b"child:time":
-        dashboard = await backend.get_child_dashboard(telegram_id)
         await event.edit(format_child_time(dashboard), buttons=CHILD_BACK_BUTTON)
         return
     if data == b"child:devices":
-        dashboard = await backend.get_child_dashboard(telegram_id)
         await event.edit(format_child_devices(dashboard), buttons=CHILD_BACK_BUTTON)
         return
+
+
+async def handle_registration_message(event: events.NewMessage.Event, backend: BackendClient) -> None:
+    """Process text entered during parent or child registration."""
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+    text = (event.raw_text or "").strip()
+    if not text:
+        return
+    if telegram_id in family_rename_sessions:
+        try:
+            family = await backend.rename_parent_family(telegram_id, text)
+        except Exception:
+            await event.respond(FAMILY_RENAME_ERROR_TEXT)
+            return
+        family_rename_sessions.discard(telegram_id)
+        await event.respond(f"✅ Название семьи изменено.\n\nНовое название:\n{family.get('name') or text}")
+        try:
+            family = await backend.get_parent_family(telegram_id)
+            await event.respond("", buttons=_parent_family_buttons(family))
+        except Exception:
+            pass
+        return
+    session = registration_sessions.get(telegram_id)
+    if session is None:
+        return
+    if session.role == "parent":
+        if session.state == "waiting_login":
+            try:
+                session.set_login(text)
+            except ValueError as exc:
+                await event.respond(f"❌ {exc}\n\n{PARENT_LOGIN_TEXT}")
+                return
+            await event.respond(PARENT_PASSWORD_TEXT)
+            return
+        if session.state == "waiting_password":
+            try:
+                registration_data = session.complete_parent_registration(text)
+            except ValueError as exc:
+                if str(exc) == "Password is too weak":
+                    await event.respond(PARENT_WEAK_PASSWORD_TEXT)
+                else:
+                    await event.respond(f"❌ {exc}\n\n{PARENT_PASSWORD_TEXT}")
+                return
+            try:
+                await backend.register_parent(**registration_data)
+            except Exception:
+                await event.respond(PARENT_ERROR_TEXT)
+                return
+            registration_sessions.pop(telegram_id, None)
+            await event.respond(PARENT_SUCCESS_TEXT)
+            await event.respond(PARENT_MENU_TEXT, buttons=PARENT_MENU_BUTTONS)
+            return
+    if session.role == "child":
+        if session.state == "waiting_invite_code":
+            try:
+                session.set_invite_code(text)
+            except ValueError as exc:
+                await event.respond(f"❌ {exc}\n\n{CHILD_INVITE_TEXT}")
+                return
+            await event.respond(CHILD_NAME_TEXT)
+            return
+        if session.state == "waiting_child_name":
+            try:
+                registration_data = session.complete_child_registration(text)
+                await backend.register_child(**registration_data)
+            except Exception:
+                await event.respond(CHILD_ERROR_TEXT)
+                return
+            registration_sessions.pop(telegram_id, None)
+            await event.respond(CHILD_SUCCESS_TEXT)
+            await event.respond(CHILD_MENU_TEXT, buttons=CHILD_MENU_BUTTONS)

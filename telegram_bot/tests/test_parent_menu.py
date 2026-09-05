@@ -6,6 +6,8 @@ from telegram_bot.child_menu import (
     format_child_profile,
     format_child_time,
 )
+from telegram_bot.version import get_project_version
+
 from telegram_bot.handlers.start import (
     CHILD_INVITE_TEXT,
     CHILD_MENU_TEXT,
@@ -151,7 +153,7 @@ def test_registered_parent_start_shows_all_parent_actions():
 
     text, buttons = event.responses[0]
     assert text == PARENT_MENU_TEXT
-    assert text == "🌟 Семейный маяк"
+    assert text == f"🌟 Семейный маяк · {get_project_version()}"
     labels = [button.text for row in buttons for button in row]
     assert labels == [
         "🏠 Семья",
