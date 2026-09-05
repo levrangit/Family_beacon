@@ -68,6 +68,15 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    async def get_child_dashboard(self, telegram_id: int) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{self.base_url}/telegram/child/{telegram_id}/dashboard",
+                headers=self._headers(),
+            )
+        response.raise_for_status()
+        return response.json()
+
     async def get_parent_profile(self, telegram_id: int) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
