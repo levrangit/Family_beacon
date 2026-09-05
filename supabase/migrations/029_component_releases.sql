@@ -36,9 +36,6 @@ CREATE TABLE public.component_releases (
 CREATE INDEX component_releases_component_published_idx
     ON public.component_releases(component, published_at DESC);
 
-CREATE INDEX component_releases_component_version_idx
-    ON public.component_releases(component, version);
-
 CREATE TRIGGER component_releases_set_updated_at
 BEFORE UPDATE ON public.component_releases
 FOR EACH ROW
