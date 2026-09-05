@@ -1,5 +1,8 @@
 from unittest.mock import MagicMock
 
+import pytest
+from fastapi import HTTPException
+
 from app.releases import CreateReleaseRequest, create_release, get_release, list_releases
 
 
@@ -23,14 +26,11 @@ def test_get_release_returns_404_when_missing(monkeypatch):
     client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = None
     monkeypatch.setattr("app.releases.get_user_client", lambda token: client)
 
-    from fastapi import HTTPException
-
-    try:
+    with pytest.raises(HTTPException) as exc:
         get_release("token", "missing")
-        raise AssertionError("expected HTTPException")
-    except HTTPException as exc:
-        assert exc.status_code == 404
-        assert exc.detail == "Component release not found"
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail == "Component release not found"
 
 
 def test_create_release_uses_trusted_admin_client(monkeypatch):
