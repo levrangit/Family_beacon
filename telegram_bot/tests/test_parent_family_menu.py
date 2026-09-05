@@ -79,7 +79,7 @@ def test_family_menu_shows_children_as_buttons_and_family_name_as_button():
     asyncio.run(handle_parent_action(event, backend))
 
     text, buttons = event.edits[0]
-    assert text == ""
+    assert text == "🏠 Семья"
     assert "🏠 Моя семья" in buttons[0][0].text
     assert [button.text for row in buttons[1:3] for button in row] == ["👶 Мария", "👶 Иван"]
     assert buttons[-2][0].text == "➕ Выдать приглашение"
@@ -94,7 +94,7 @@ def test_family_menu_without_children_shows_not_registered_message():
     asyncio.run(handle_parent_action(event, backend))
 
     text, buttons = event.edits[0]
-    assert text == "Дети не зарегистрированы."
+    assert text == "🏠 Семья\n\nДети не зарегистрированы."
     assert buttons[-2][0].text == "➕ Выдать приглашение"
     assert buttons[-1][0].text == "◀️ Назад"
 

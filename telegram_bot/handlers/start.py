@@ -100,7 +100,7 @@ async def _show_parent_family(event: events.CallbackQuery.Event, backend: Backen
         return
     family = await backend.get_parent_family(telegram_id)
     children = family.get("children") or []
-    text = "" if children else "Дети не зарегистрированы."
+    text = "🏠 Семья" if children else "🏠 Семья\n\nДети не зарегистрированы."
     if edit:
         await event.edit(text, buttons=_parent_family_buttons(family))
 
