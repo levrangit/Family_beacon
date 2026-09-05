@@ -27,8 +27,12 @@ class FakeAsyncClient:
     async def __aexit__(self, exc_type, exc, tb):
         return None
 
+    async def get(self, url, headers=None):
+        self.calls.append(("GET", url, None, headers))
+        return FakeResponse(self.response_payload)
+
     async def post(self, url, json=None, headers=None):
-        self.calls.append((url, json, headers))
+        self.calls.append(("POST", url, json, headers))
         return FakeResponse(self.response_payload)
 
 
@@ -58,6 +62,7 @@ def test_register_parent_sends_registration_data_to_backend(monkeypatch):
         assert result["user_id"] == "user-1"
         assert calls == [
             (
+                "POST",
                 "http://127.0.0.1:8000/auth/register-parent",
                 {
                     "telegram_id": 123456789,
@@ -108,12 +113,51 @@ def test_register_child_sends_registration_data_to_backend(monkeypatch):
         }
         assert calls == [
             (
+                "POST",
                 "http://127.0.0.1:8000/telegram/child/register",
                 {
                     "telegram_id": 123456789,
                     "invite_code": "ABCD-2345",
                     "child_name": "Alice",
                 },
+                {"X-Telegram-Bot-Key": "test-shared-secret"},
+            )
+        ]
+
+    asyncio.run(run_test())
+
+
+def test_get_child_dashboard_sends_telegram_id_and_shared_secret(monkeypatch):
+    calls = []
+    dashboard = {
+        "child": {"id": "child-1", "name": "Alice"},
+        "devices": [],
+        "today_usage": {"used_minutes": 15},
+        "today_policy": {"daily_limit_minutes": 60, "is_enabled": True},
+    }
+
+    def fake_async_client(**_kwargs):
+        return FakeAsyncClient(calls, response_payload=dashboard)
+
+    monkeypatch.setattr(
+        "telegram_bot.backend_client.httpx.AsyncClient",
+        fake_async_client,
+    )
+
+    client = BackendClient(
+        "http://127.0.0.1:8000",
+        "test-shared-secret",
+    )
+
+    async def run_test():
+        result = await client.get_child_dashboard(123456789)
+
+        assert result == dashboard
+        assert calls == [
+            (
+                "GET",
+                "http://127.0.0.1:8000/telegram/child/123456789/dashboard",
+                None,
                 {"X-Telegram-Bot-Key": "test-shared-secret"},
             )
         ]
@@ -152,6 +196,7 @@ def test_create_parent_invite_sends_telegram_id_and_shared_secret(monkeypatch):
         }
         assert calls == [
             (
+                "POST",
                 "http://127.0.0.1:8000/telegram/parent/invites/123456",
                 None,
                 {"X-Telegram-Bot-Key": "test-shared-secret"},
