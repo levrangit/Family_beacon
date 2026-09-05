@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import HTTPException
 
 from app.supabase_client import get_user_client
@@ -70,6 +72,7 @@ def check_device_update(access_token: str, device_id: str):
                 detail="Device agent version is invalid",
             ) from exc
 
+        now = datetime.now(timezone.utc).isoformat()
         releases_response = (
             client
             .table("component_releases")
@@ -78,7 +81,7 @@ def check_device_update(access_token: str, device_id: str):
                 "release_notes, published_at"
             )
             .eq("component", COMPONENT)
-            .lte("published_at", "now()")
+            .lte("published_at", now)
             .execute()
         )
         releases = releases_response.data or []
