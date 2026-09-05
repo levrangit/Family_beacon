@@ -17,7 +17,6 @@ class CreateDeviceRequest(BaseModel):
     name: str
     platform: Literal["windows", "macos", "linux"]
     hostname: str | None = None
-    agent_version: str | None = None
 
 
 class UpdateDeviceRequest(BaseModel):
@@ -44,7 +43,6 @@ def create_device(
                     "name": data.name,
                     "platform": data.platform,
                     "hostname": data.hostname,
-                    "agent_version": data.agent_version,
                 }
             )
             .execute()
