@@ -460,5 +460,4 @@ async def handle_registration_message(
 
             registration_sessions.pop(telegram_id, None)
             await event.respond(CHILD_SUCCESS_TEXT)
-            await event.respond(CHILD_MENU_TEXT)
-            return
+            await event.respond(CHILD_MENU_TEXT, buttons=CHILD_MENU_BUTTONS)
