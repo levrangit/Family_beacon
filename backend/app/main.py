@@ -667,3 +667,21 @@ async def telegram_child_dashboard_endpoint(
         return service.get_dashboard(telegram_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/me")
+async def me(auth=Depends(get_current_user)):
+    current_user, access_token = auth
+
+    profile = get_profile(
+        str(current_user.id),
+        access_token,
+    )
+
+    return {
+        "user": {
+            "id": str(current_user.id),
+            "email": current_user.email,
+        },
+        "profile": profile,
+    }
