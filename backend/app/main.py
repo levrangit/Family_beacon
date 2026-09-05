@@ -19,6 +19,10 @@ from app.devices import (
     update_device,
     delete_device,
 )
+from app.device_updates import (
+    list_device_updates,
+    get_device_update,
+)
 from app.time_policies import (
     CreateTimePolicyRequest,
     UpdateTimePolicyRequest,
@@ -467,6 +471,34 @@ async def get_device_endpoint(
     return get_device(
         access_token=access_token,
         device_id=device_id,
+    )
+
+
+@app.get("/devices/{device_id}/updates")
+async def list_device_updates_endpoint(
+    device_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return list_device_updates(
+        access_token=access_token,
+        device_id=device_id,
+    )
+
+
+@app.get("/devices/{device_id}/updates/{update_id}")
+async def get_device_update_endpoint(
+    device_id: str,
+    update_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return get_device_update(
+        access_token=access_token,
+        device_id=device_id,
+        update_id=update_id,
     )
 
 
