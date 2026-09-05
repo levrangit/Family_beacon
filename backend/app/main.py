@@ -40,6 +40,7 @@ from app.time_usage import (
 from app.profiles import get_profile, lookup_profile_by_telegram_id
 from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.supabase_client import close_http_client, get_user_client, supabase
+from app.telegram_child import TelegramChildService
 from app.telegram_parent import TelegramParentService
 
 from app.commands import (
@@ -160,6 +161,19 @@ def _telegram_parent_service(x_telegram_bot_key: str | None) -> TelegramParentSe
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
+def _telegram_child_service(x_telegram_bot_key: str | None) -> TelegramChildService:
+    if not TELEGRAM_BOT_SHARED_SECRET or not x_telegram_bot_key:
+        raise HTTPException(status_code=401, detail="Telegram bot authentication required")
+
+    if not hmac.compare_digest(x_telegram_bot_key, TELEGRAM_BOT_SHARED_SECRET):
+        raise HTTPException(status_code=403, detail="Invalid Telegram bot authentication")
+
+    try:
+        return TelegramChildService()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/telegram/parent/profile/{telegram_id}")
 async def telegram_parent_profile_endpoint(
     telegram_id: int,
@@ -220,6 +234,28 @@ async def telegram_parent_create_invite_endpoint(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+class TelegramChildRegistrationRequest(BaseModel):
+    telegram_id: int
+    invite_code: str
+    child_name: str
+
+
+@app.post("/telegram/child/register")
+async def telegram_child_register_endpoint(
+    data: TelegramChildRegistrationRequest,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_child_service(x_telegram_bot_key)
+    try:
+        return service.register_child(
+            telegram_id=data.telegram_id,
+            invite_code=data.invite_code,
+            child_name=data.child_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.delete("/telegram/parent/account/{telegram_id}")
 async def telegram_parent_delete_account_endpoint(
     telegram_id: int,
@@ -229,48 +265,13 @@ async def telegram_parent_delete_account_endpoint(
     try:
         return service.delete_parent_account(telegram_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.get("/supabase-check")
-async def supabase_check() -> dict[str, bool | str]:
-    if supabase is None:
-        return {
-            "connected": False,
-            "error": "Supabase configuration is missing",
-        }
-
-    try:
-        response = supabase.rpc("health_check").execute()
-
-        return {
-            "connected": True,
-            "query_ok": response.data is not None,
-        }
-
-    except Exception as exc:
-        return {
-            "connected": False,
-            "error": str(exc),
-        }
-
-
-@app.get("/me")
-async def me(auth=Depends(get_current_user)):
-    current_user, access_token = auth
-
-    profile = get_profile(
-        str(current_user.id),
-        access_token,
-    )
-
-    return {
-        "user": {
-            "id": str(current_user.id),
-            "email": current_user.email,
-        },
-        "profile": profile,
-    }
+class ParentRegistrationRequest(BaseModel):
+    telegram_id: int
+    login: str
+    password: str
 
 
 class CreateFamilyRequest(BaseModel):
@@ -544,32 +545,8 @@ async def delete_time_policy_endpoint(
     )
 
 
-@app.get("/time-usage")
-async def list_time_usage_endpoint(
-    child_id: str | None = None,
-    usage_date: str | None = None,
-    auth=Depends(get_current_user),
-):
-    from datetime import date
-
-    current_user, access_token = auth
-
-    parsed_date = (
-        date.fromisoformat(usage_date)
-        if usage_date is not None
-        else None
-    )
-
-    return list_time_usage(
-        access_token=access_token,
-        child_id=child_id,
-        usage_date=parsed_date,
-    )
-
-
-@app.post("/devices/{device_id}/usage")
+@app.post("/time-usage")
 async def record_time_usage_endpoint(
-    device_id: str,
     data: RecordTimeUsageRequest,
     auth=Depends(get_current_user),
 ):
@@ -577,8 +554,20 @@ async def record_time_usage_endpoint(
 
     return record_time_usage(
         access_token=access_token,
-        device_id=device_id,
         data=data,
+    )
+
+
+@app.get("/time-usage")
+async def list_time_usage_endpoint(
+    child_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return list_time_usage(
+        access_token=access_token,
+        child_id=child_id,
     )
 
 
@@ -593,3 +582,46 @@ async def create_command_endpoint(
         access_token=access_token,
         data=data,
     )
+
+
+@app.get("/commands")
+async def list_commands_endpoint(
+    device_id: str | None = None,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return list_commands(
+        access_token=access_token,
+        device_id=device_id,
+    )
+
+
+@app.get("/commands/{command_id}")
+async def get_command_endpoint(
+    command_id: str,
+    auth=Depends(get_current_user),
+):
+    current_user, access_token = auth
+
+    return get_command(
+        access_token=access_token,
+        command_id=command_id,
+    )
+
+
+@app.post("/device/auth")
+async def device_auth_endpoint(data: DeviceAuthRequest):
+    return authenticate_device(data)
+
+
+@app.post("/device/auth/token")
+async def device_auth_token_endpoint(data: DeviceAuthRequest):
+    return create_device_auth_token(data)
+
+
+@app.post("/device/commands/complete")
+async def complete_device_command_endpoint(
+    authorization: str | None = Header(default=None),
+):
+    return complete_device_command(authorization)
