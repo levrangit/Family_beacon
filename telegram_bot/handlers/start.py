@@ -203,7 +203,6 @@ async def handle_parent_action(
         text = (
             "👤 Мой профиль\n\n"
             f"Логин: {email}\n"
-            f"Telegram ID: {profile.get('telegram_id', '—')}\n"
             f"Роль: {profile.get('role', '—')}\n"
             f"Статус: {status}"
         )
