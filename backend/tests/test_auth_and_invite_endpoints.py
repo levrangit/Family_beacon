@@ -3,17 +3,19 @@ from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
-from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.main import app
 
 
+TEST_TELEGRAM_BOT_KEY = "test-telegram-bot-key"
 TELEGRAM_BOT_HEADERS = {
-    "X-Telegram-Bot-Key": TELEGRAM_BOT_SHARED_SECRET,
+    "X-Telegram-Bot-Key": TEST_TELEGRAM_BOT_KEY,
 }
 
 
 def test_register_parent_endpoint_uses_register_parent_service(monkeypatch):
     import app.main as main
+
+    monkeypatch.setattr(main, "TELEGRAM_BOT_SHARED_SECRET", TEST_TELEGRAM_BOT_KEY)
 
     expected = {
         "user_id": "user-123",
