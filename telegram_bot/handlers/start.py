@@ -82,7 +82,7 @@ family_rename_sessions: set[int] = set()
 
 def _parent_family_buttons(family: dict) -> list[list[Button]]:
     buttons: list[list[Button]] = [
-        [Button.inline(f"🏠 {family.get('name') or 'Моя семья'}", b"parent:family:rename")]
+        [Button.inline(f"🏠 {family.get('name') or 'Семья'}", b"parent:family:rename")]
     ]
     children = family.get("children") or []
     for child in children:
@@ -165,7 +165,7 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
         family_rename_sessions.add(telegram_id)
         try:
             family = await backend.get_parent_family(telegram_id)
-            current_name = family.get("name") or "Моя семья"
+            current_name = family.get("name") or "Семья"
             await event.edit(
                 f"✏️ Переименование семьи\n\nТекущее название:\n{current_name}\n\nВведите новое название семьи:",
                 buttons=FAMILY_RENAME_BUTTONS,
@@ -191,9 +191,9 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
         child = dashboard.get("child") or {}
         name = child.get("name") or "Без имени"
         buttons = [
-            [Button.inline("👤 Мой профиль", f"parent:child:{child_id}:profile".encode())],
-            [Button.inline("⏱ Моё время", f"parent:child:{child_id}:time".encode())],
-            [Button.inline("💻 Мои устройства", f"parent:child:{child_id}:devices".encode())],
+            [Button.inline("👤 Профиль", f"parent:child:{child_id}:profile".encode())],
+            [Button.inline("⏱ Время", f"parent:child:{child_id}:time".encode())],
+            [Button.inline("💻 Устройства", f"parent:child:{child_id}:devices".encode())],
             [Button.inline("◀️ Назад", b"parent:family")],
         ]
         await event.edit(f"👶 {name}", buttons=buttons)
@@ -212,11 +212,11 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
         name = child.get("name") or "Без имени"
         child_menu_button = Button.inline("◀️ Назад", f"parent:family:child:{child_id}".encode())
         if section == "profile":
-            text = format_child_profile(child).replace("👤 Мой профиль", f"👤 {name} — профиль")
+            text = format_child_profile(child).replace("👤 Профиль", f"👤 {name} — профиль")
         elif section == "time":
-            text = format_child_time(dashboard).replace("⏱ Моё время", f"⏱ {name} — время")
+            text = format_child_time(dashboard).replace("⏱ Время", f"⏱ {name} — время")
         elif section == "devices":
-            text = format_child_devices(dashboard).replace("💻 Мои устройства", f"💻 {name} — устройства")
+            text = format_child_devices(dashboard).replace("💻 Устройства", f"💻 {name} — устройства")
         else:
             return
         await event.edit(text, buttons=[[child_menu_button]])
