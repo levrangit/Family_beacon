@@ -1,9 +1,16 @@
 import asyncio
 
+from telegram_bot.child_menu import (
+    CHILD_MENU_BUTTONS,
+    format_child_devices,
+    format_child_profile,
+    format_child_time,
+)
 from telegram_bot.handlers.start import (
     CHILD_INVITE_TEXT,
     CHILD_NAME_TEXT,
     CHILD_SUCCESS_TEXT,
+    handle_child_action,
     handle_parent_action,
     handle_registration_message,
     handle_role,
@@ -41,6 +48,27 @@ class FakeBackend:
         self.deleted = []
         self.created_invites = []
         self.registered_children = []
+        self.child_dashboard = {
+            "child": {
+                "id": "child-1",
+                "family_id": "family-1",
+                "name": "Alice",
+                "telegram_id": 123456,
+                "is_active": True,
+            },
+            "devices": [
+                {
+                    "name": "Laptop",
+                    "platform": "windows",
+                    "is_online": True,
+                }
+            ],
+            "today_usage": {"used_minutes": 15},
+            "today_policy": {
+                "daily_limit_minutes": 60,
+                "is_enabled": True,
+            },
+        }
 
     async def lookup_telegram_id(self, telegram_id):
         return {
@@ -50,6 +78,9 @@ class FakeBackend:
             "role": "parent",
             "is_active": True,
         }
+
+    async def get_child_dashboard(self, _telegram_id):
+        return self.child_dashboard
 
     async def get_parent_profile(self, _telegram_id):
         return {
@@ -125,6 +156,76 @@ def test_registered_parent_start_shows_all_parent_actions():
         "➕ Выдать приглашение ребенку",
         "🗑 Забыть меня",
     ]
+
+
+def test_registered_child_start_shows_child_menu():
+    event = FakeMessageEvent(123456)
+    backend = FakeBackend()
+    backend.child_dashboard["child"]["name"] = "Мария"
+
+    async def child_lookup(_telegram_id):
+        return {
+            "type": "child",
+            **backend.child_dashboard["child"],
+        }
+
+    backend.lookup_telegram_id = child_lookup
+
+    asyncio.run(handle_start(event, backend))
+
+    text, buttons = event.responses[0]
+    assert "Привет, Мария!" in text
+    assert [button.text for row in buttons for button in row] == [
+        button.text for row in CHILD_MENU_BUTTONS for button in row
+    ]
+
+
+def test_child_menu_refresh_loads_dashboard():
+    event = FakeCallbackEvent(123456, b"child:menu")
+    backend = FakeBackend()
+
+    asyncio.run(handle_child_action(event, backend))
+
+    assert event.answered is True
+    text, buttons = event.edits[0]
+    assert "Привет, Alice!" in text
+    assert buttons == CHILD_MENU_BUTTONS
+
+
+def test_child_profile_action_returns_profile_information():
+    event = FakeCallbackEvent(123456, b"child:profile")
+    backend = FakeBackend()
+
+    asyncio.run(handle_child_action(event, backend))
+
+    text, buttons = event.edits[0]
+    assert text == format_child_profile(backend.child_dashboard["child"])
+    assert buttons[0][0].text == "◀️ Назад"
+
+
+def test_child_time_action_returns_usage_and_limit():
+    event = FakeCallbackEvent(123456, b"child:time")
+    backend = FakeBackend()
+
+    asyncio.run(handle_child_action(event, backend))
+
+    text, _buttons = event.edits[0]
+    assert text == format_child_time(backend.child_dashboard)
+    assert "Использовано сегодня: 15 мин." in text
+    assert "Лимит сегодня: 60 мин." in text
+    assert "Осталось: 45 мин." in text
+
+
+def test_child_devices_action_returns_devices():
+    event = FakeCallbackEvent(123456, b"child:devices")
+    backend = FakeBackend()
+
+    asyncio.run(handle_child_action(event, backend))
+
+    text, _buttons = event.edits[0]
+    assert text == format_child_devices(backend.child_dashboard)
+    assert "Laptop" in text
+    assert "онлайн" in text
 
 
 def test_profile_action_returns_profile_information():
