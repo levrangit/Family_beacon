@@ -1,6 +1,6 @@
 import requests
 
-from .config import BACKEND_URL, DEVICE_TOKEN
+from .config import AGENT_VERSION, BACKEND_URL, DEVICE_TOKEN
 
 
 class DeviceAgentAPI:
@@ -8,9 +8,11 @@ class DeviceAgentAPI:
         self,
         backend_url: str = BACKEND_URL,
         device_token: str = DEVICE_TOKEN,
+        agent_version: str = AGENT_VERSION,
     ):
         self.backend_url = backend_url.rstrip("/")
         self.device_token = device_token
+        self.agent_version = agent_version
 
     def _headers(self) -> dict[str, str]:
         if not self.device_token:
@@ -35,9 +37,13 @@ class DeviceAgentAPI:
         if not self.device_token:
             raise RuntimeError("Device token is not configured")
 
+        if not self.agent_version or not self.agent_version.strip():
+            raise RuntimeError("Agent version is not configured")
+
         response = requests.post(
             f"{self.backend_url}/device/heartbeat",
             headers=self._headers(),
+            json={"agent_version": self.agent_version.strip()},
             timeout=10,
         )
         response.raise_for_status()

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.devices import (
     CreateDeviceRequest,
@@ -90,6 +91,17 @@ def test_update_device_returns_updated_device(monkeypatch):
     result = update_device("token", "device-1", UpdateDeviceRequest(name="New name"))
 
     assert result["name"] == "New name"
+
+
+def test_update_device_request_rejects_operational_fields():
+    with pytest.raises(ValidationError):
+        UpdateDeviceRequest(agent_version="0.4.0")
+
+    with pytest.raises(ValidationError):
+        UpdateDeviceRequest(is_online=True)
+
+    with pytest.raises(ValidationError):
+        UpdateDeviceRequest(last_seen="2026-09-05T00:00:00+00:00")
 
 
 def test_heartbeat_device_maps_missing_device(monkeypatch):
