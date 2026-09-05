@@ -46,6 +46,28 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    async def register_child(
+        self,
+        telegram_id: int,
+        invite_code: str,
+        child_name: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "telegram_id": telegram_id,
+            "invite_code": invite_code,
+            "child_name": child_name,
+        }
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                f"{self.base_url}/telegram/child/register",
+                json=payload,
+                headers=self._headers(),
+            )
+
+        response.raise_for_status()
+        return response.json()
+
     async def get_parent_profile(self, telegram_id: int) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
