@@ -25,6 +25,11 @@ class RegistrationSession:
         if not password.strip():
             raise ValueError("Password is required")
 
+        if len(password) < 8 or not any(char.isalpha() for char in password) or not any(
+            char.isdigit() for char in password
+        ):
+            raise ValueError("Password is too weak")
+
         self.state = "completed"
 
         return {
