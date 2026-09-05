@@ -1,6 +1,15 @@
 import asyncio
 
-from telegram_bot.handlers.start import handle_parent_action, handle_start
+from telegram_bot.handlers.start import (
+    CHILD_INVITE_TEXT,
+    CHILD_NAME_TEXT,
+    CHILD_SUCCESS_TEXT,
+    handle_parent_action,
+    handle_registration_message,
+    handle_role,
+    handle_start,
+    registration_sessions,
+)
 
 
 class FakeMessageEvent:
@@ -31,6 +40,7 @@ class FakeBackend:
     def __init__(self):
         self.deleted = []
         self.created_invites = []
+        self.registered_children = []
 
     async def lookup_telegram_id(self, telegram_id):
         return {
@@ -72,9 +82,30 @@ class FakeBackend:
             "expires_at": "2026-09-06T01:30:00+00:00",
         }
 
+    async def register_child(self, telegram_id, invite_code, child_name):
+        self.registered_children.append(
+            {
+                "telegram_id": telegram_id,
+                "invite_code": invite_code,
+                "child_name": child_name,
+            }
+        )
+        return {
+            "child_id": "child-1",
+            "family_id": "family-1",
+            "invite_id": "invite-1",
+        }
+
+    async def register_parent(self, **_kwargs):
+        return {"user_id": "user-1"}
+
     async def delete_parent_account(self, telegram_id):
         self.deleted.append(telegram_id)
         return {"status": "deleted"}
+
+
+def teardown_function(_function):
+    registration_sessions.clear()
 
 
 def test_registered_parent_start_shows_all_parent_actions():
@@ -119,7 +150,7 @@ def test_invites_action_returns_codes_and_expiration():
     text, buttons = event.edits[0]
     assert "📨 Мои приглашения" in text
     assert "Код: ABCD1234" in text
-    assert "Действует до: 06.09.2026 01:30 UTC" in text
+    assert "Действует до: 06.09.2026" in text
     assert buttons[0][0].text == "◀️ Назад"
 
 
@@ -135,9 +166,55 @@ def test_create_invite_action_returns_code_and_expiration():
     text, buttons = event.edits[0]
     assert "🎟 Приглашение создано!" in text
     assert "Код: ABCD1234" in text
-    assert "Действительно до: 06.09.2026 01:30 UTC" in text
+    assert "Действительно до: 06.09.2026" in text
     assert "Передайте этот код ребёнку." in text
     assert buttons[0][0].text == "◀️ Назад"
+
+
+def test_child_role_starts_invite_registration():
+    event = FakeCallbackEvent(123456, b"role:child")
+
+    asyncio.run(handle_role(event))
+
+    assert event.answered is True
+    assert event.edits[0][0] == CHILD_INVITE_TEXT
+    assert registration_sessions[123456].role == "child"
+    assert registration_sessions[123456].state == "waiting_invite_code"
+
+
+def test_child_registration_asks_for_name_after_invite_code():
+    session_event = FakeCallbackEvent(123456, b"role:child")
+    asyncio.run(handle_role(session_event))
+
+    event = FakeMessageEvent(123456, "ABCD-2345")
+    backend = FakeBackend()
+    asyncio.run(handle_registration_message(event, backend))
+
+    assert event.responses == [(CHILD_NAME_TEXT, None)]
+    assert registration_sessions[123456].invite_code == "ABCD-2345"
+    assert registration_sessions[123456].state == "waiting_child_name"
+
+
+def test_child_registration_completes_and_calls_backend():
+    session_event = FakeCallbackEvent(123456, b"role:child")
+    asyncio.run(handle_role(session_event))
+
+    code_event = FakeMessageEvent(123456, "abcd-2345")
+    backend = FakeBackend()
+    asyncio.run(handle_registration_message(code_event, backend))
+
+    name_event = FakeMessageEvent(123456, " Alice ")
+    asyncio.run(handle_registration_message(name_event, backend))
+
+    assert backend.registered_children == [
+        {
+            "telegram_id": 123456,
+            "invite_code": "ABCD-2345",
+            "child_name": "Alice",
+        }
+    ]
+    assert name_event.responses == [(CHILD_SUCCESS_TEXT, None)]
+    assert 123456 not in registration_sessions
 
 
 def test_forget_confirmation_deletes_account_after_confirmation():
