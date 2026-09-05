@@ -625,3 +625,15 @@ async def complete_device_command_endpoint(
     authorization: str | None = Header(default=None),
 ):
     return complete_device_command(authorization)
+
+
+@app.get("/telegram/child/{telegram_id}/dashboard")
+async def telegram_child_dashboard_endpoint(
+    telegram_id: int,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_child_service(x_telegram_bot_key)
+    try:
+        return service.get_dashboard(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
