@@ -29,16 +29,16 @@ ROLE_BUTTONS = [
 
 PARENT_MENU_TEXT = "👨 Family Beacon\n\nВыберите действие:"
 PARENT_MENU_BUTTONS = [
-    [Button.inline("Семья", b"parent:family")],
-    [Button.inline("Профиль", b"parent:profile")],
-    [Button.inline("Дети", b"parent:children")],
-    [Button.inline("Приглашения", b"parent:invites")],
+    [Button.inline("🏠 Семья", b"parent:family")],
+    [Button.inline("👤 Профиль", b"parent:profile")],
+    [Button.inline("👶 Дети", b"parent:children")],
+    [Button.inline("📨 Приглашения", b"parent:invites")],
     [Button.inline("🗑 Забыть меня", b"parent:forget")],
 ]
 
 BACK_BUTTON = [[Button.inline("◀️ Назад", b"parent:menu")]]
 INVITES_BUTTONS = [
-    [Button.inline("Выдать приглашение", b"parent:create_invite")],
+    [Button.inline("➕ Выдать приглашение", b"parent:create_invite")],
     [Button.inline("◀️ Назад", b"parent:menu")],
 ]
 FORGET_CONFIRM_BUTTONS = [
