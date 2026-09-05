@@ -29,15 +29,18 @@ ROLE_BUTTONS = [
 
 PARENT_MENU_TEXT = "👨 Family Beacon\n\nВыберите действие:"
 PARENT_MENU_BUTTONS = [
-    [Button.inline("🏠 Моя семья", b"parent:family")],
-    [Button.inline("👤 Мой профиль", b"parent:profile")],
-    [Button.inline("👶 Дети", b"parent:children")],
-    [Button.inline("📨 Мои приглашения", b"parent:invites")],
-    [Button.inline("➕ Выдать приглашение ребенку", b"parent:create_invite")],
+    [Button.inline("Семья", b"parent:family")],
+    [Button.inline("Профиль", b"parent:profile")],
+    [Button.inline("Дети", b"parent:children")],
+    [Button.inline("Приглашения", b"parent:invites")],
     [Button.inline("🗑 Забыть меня", b"parent:forget")],
 ]
 
 BACK_BUTTON = [[Button.inline("◀️ Назад", b"parent:menu")]]
+INVITES_BUTTONS = [
+    [Button.inline("Выдать приглашение", b"parent:create_invite")],
+    [Button.inline("◀️ Назад", b"parent:menu")],
+]
 FORGET_CONFIRM_BUTTONS = [
     [Button.inline("❌ Отмена", b"parent:forget:cancel")],
     [Button.inline("🗑 Да, удалить всё", b"parent:forget:confirm")],
@@ -236,7 +239,7 @@ async def handle_parent_action(
             return
 
         if not invites:
-            await event.edit("📨 Мои приглашения\n\nПриглашений пока нет.", buttons=BACK_BUTTON)
+            await event.edit("📨 Мои приглашения\n\nПриглашений пока нет.", buttons=INVITES_BUTTONS)
             return
 
         status_labels = {
@@ -266,14 +269,14 @@ async def handle_parent_action(
                 ]
             )
 
-        await event.edit("\n".join(lines).rstrip(), buttons=BACK_BUTTON)
+        await event.edit("\n".join(lines).rstrip(), buttons=INVITES_BUTTONS)
         return
 
     if data == b"parent:create_invite":
         try:
             invite = await backend.create_parent_invite(telegram_id)
         except Exception:
-            await event.edit("❌ Не удалось создать приглашение.", buttons=BACK_BUTTON)
+            await event.edit("❌ Не удалось создать приглашение.", buttons=INVITES_BUTTONS)
             return
 
         expires_at = str(invite.get("expires_at", "—"))
@@ -290,7 +293,7 @@ async def handle_parent_action(
             f"Действительно до: {expires_at}\n\n"
             "Передайте этот код ребёнку."
         )
-        await event.edit(text, buttons=BACK_BUTTON)
+        await event.edit(text, buttons=INVITES_BUTTONS)
         return
 
     if data == b"parent:forget":
