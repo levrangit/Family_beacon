@@ -33,14 +33,7 @@ CREATE TABLE public.component_compatibility (
     updated_at timestamptz NOT NULL DEFAULT now(),
 
     CONSTRAINT component_compatibility_release_platform_key
-        UNIQUE (release_id, platform),
-
-    CONSTRAINT component_compatibility_agent_range_check
-        CHECK (
-            min_agent_version IS NULL
-            OR max_agent_version IS NULL
-            OR min_agent_version <= max_agent_version
-        )
+        UNIQUE (release_id, platform)
 );
 
 CREATE INDEX component_compatibility_release_idx
