@@ -8,19 +8,32 @@ from app.supabase_client import get_user_client
 
 class RecordTimeUsageRequest(BaseModel):
     child_id: str
+    device_id: str | None = None
     usage_date: date
     additional_minutes: int
 
 
 def record_time_usage(
     access_token: str,
-    device_id: str,
-    data: RecordTimeUsageRequest,
+    device_id: str | None = None,
+    data: RecordTimeUsageRequest | None = None,
 ):
+    if data is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Time usage data is required",
+        )
+
     if data.additional_minutes < 0:
         raise HTTPException(
             status_code=400,
             detail="Usage minutes cannot be negative",
+        )
+
+    if not device_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Device ID is required",
         )
 
     try:
@@ -82,13 +95,9 @@ def list_time_usage(
     try:
         client = get_user_client(access_token)
 
-        query = (
-            client
-            .table("time_usage")
-            .select(
-                "id, child_id, device_id, usage_date, "
-                "used_minutes, created_at, updated_at"
-            )
+        query = client.table("time_usage").select(
+            "id, child_id, device_id, usage_date, "
+            "used_minutes, created_at, updated_at"
         )
 
         if child_id is not None:
@@ -97,11 +106,7 @@ def list_time_usage(
         if usage_date is not None:
             query = query.eq("usage_date", usage_date.isoformat())
 
-        response = (
-            query
-            .order("usage_date", desc=True)
-            .execute()
-        )
+        response = query.order("usage_date", desc=True).execute()
 
         return response.data or []
 
