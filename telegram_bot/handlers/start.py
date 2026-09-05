@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from telethon import Button, events
+from telethon.errors import MessageNotModifiedError
 
 from telegram_bot.backend_client import BackendClient
 from telegram_bot.child_menu import (
@@ -331,10 +332,13 @@ async def handle_child_action(
         try:
             dashboard = await backend.get_child_dashboard(telegram_id)
         except Exception:
-            await event.edit(
-                "❌ Не удалось загрузить меню ребёнка.",
-                buttons=CHILD_BACK_BUTTON,
-            )
+            try:
+                await event.edit(
+                    "❌ Не удалось загрузить меню ребёнка.",
+                    buttons=CHILD_BACK_BUTTON,
+                )
+            except MessageNotModifiedError:
+                pass
             return
 
         await event.edit(
@@ -346,10 +350,13 @@ async def handle_child_action(
     try:
         dashboard = await backend.get_child_dashboard(telegram_id)
     except Exception:
-        await event.edit(
-            "❌ Не удалось загрузить данные ребёнка.",
-            buttons=CHILD_BACK_BUTTON,
-        )
+        try:
+            await event.edit(
+                "❌ Не удалось загрузить данные ребёнка.",
+                buttons=CHILD_BACK_BUTTON,
+            )
+        except MessageNotModifiedError:
+            pass
         return
 
     if data == b"child:profile":
