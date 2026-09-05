@@ -36,9 +36,6 @@ CREATE TABLE public.component_compatibility (
         UNIQUE (release_id, platform)
 );
 
-CREATE INDEX component_compatibility_release_idx
-    ON public.component_compatibility(release_id);
-
 CREATE INDEX component_compatibility_platform_idx
     ON public.component_compatibility(platform);
 
