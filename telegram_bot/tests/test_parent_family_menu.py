@@ -115,14 +115,14 @@ def test_family_name_button_opens_rename_prompt():
 
 def test_family_rename_updates_name_and_returns_to_family_menu():
     family_rename_sessions.add(123456)
-    event = FakeMessageEvent(123456, "  Семья Леопольдовых  ")
+    event = FakeMessageEvent(123456, "  Семья Леопольдовы  ")
     backend = FakeBackend()
 
     asyncio.run(handle_registration_message(event, backend))
 
-    assert "Семья Леопольдовых" in event.responses[0][0]
+    assert "Семья Леопольдовы" in event.responses[0][0]
     assert event.responses[1][0] == ""
-    assert "🏠 Семья Леопольдовых" in event.responses[1][1][0][0].text
+    assert "🏠 Семья Леопольдовы" in event.responses[1][1][0][0].text
     assert 123456 not in family_rename_sessions
 
 
@@ -135,9 +135,9 @@ def test_child_button_opens_child_menu():
     text, buttons = event.edits[0]
     assert text == "👶 Мария"
     assert [button.text for row in buttons for button in row] == [
-        "👤 Мой профиль",
-        "⏱ Моё время",
-        "💻 Мои устройства",
+        "👤 Профиль",
+        "⏱ Время",
+        "💻 Устройства",
         "◀️ Назад",
     ]
 
