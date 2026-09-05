@@ -8,8 +8,12 @@ from telegram_bot.child_menu import (
 )
 from telegram_bot.handlers.start import (
     CHILD_INVITE_TEXT,
+    CHILD_MENU_TEXT,
     CHILD_NAME_TEXT,
     CHILD_SUCCESS_TEXT,
+    PARENT_MENU_BUTTONS,
+    PARENT_MENU_TEXT,
+    PARENT_SUCCESS_TEXT,
     handle_child_action,
     handle_parent_action,
     handle_registration_message,
@@ -146,7 +150,8 @@ def test_registered_parent_start_shows_all_parent_actions():
     asyncio.run(handle_start(event, backend))
 
     text, buttons = event.responses[0]
-    assert "Family Beacon" in text
+    assert text == PARENT_MENU_TEXT
+    assert text == "🌟 Семейный маяк"
     labels = [button.text for row in buttons for button in row]
     assert labels == [
         "🏠 Семья",
@@ -155,6 +160,7 @@ def test_registered_parent_start_shows_all_parent_actions():
         "📨 Приглашения",
         "🗑 Забыть меня",
     ]
+    assert buttons == PARENT_MENU_BUTTONS
 
 
 def test_registered_child_start_shows_child_menu():
@@ -173,13 +179,15 @@ def test_registered_child_start_shows_child_menu():
     asyncio.run(handle_start(event, backend))
 
     text, buttons = event.responses[0]
+    assert "🌟 Семейный маяк" in text
     assert "Привет, Мария!" in text
     assert [button.text for row in buttons for button in row] == [
         button.text for row in CHILD_MENU_BUTTONS for button in row
     ]
+    assert "🔄 Обновить" not in text
 
 
-def test_child_menu_refresh_loads_dashboard():
+def test_child_menu_loads_dashboard_without_refresh_button():
     event = FakeCallbackEvent(123456, b"child:menu")
     backend = FakeBackend()
 
@@ -188,7 +196,13 @@ def test_child_menu_refresh_loads_dashboard():
     assert event.answered is True
     text, buttons = event.edits[0]
     assert "Привет, Alice!" in text
+    assert "🌟 Семейный маяк" in text
     assert buttons == CHILD_MENU_BUTTONS
+    assert [button.text for row in buttons for button in row] == [
+        "👤 Мой профиль",
+        "⏱ Моё время",
+        "💻 Мои устройства",
+    ]
 
 
 def test_child_profile_action_returns_profile_information():
@@ -300,7 +314,7 @@ def test_child_registration_asks_for_name_after_invite_code():
     assert registration_sessions[123456].state == "waiting_child_name"
 
 
-def test_child_registration_completes_and_calls_backend():
+def test_child_registration_completes_and_shows_menu():
     session_event = FakeCallbackEvent(123456, b"role:child")
     asyncio.run(handle_role(session_event))
 
@@ -318,7 +332,28 @@ def test_child_registration_completes_and_calls_backend():
             "child_name": "Alice",
         }
     ]
-    assert name_event.responses == [(CHILD_SUCCESS_TEXT, None)]
+    assert name_event.responses == [
+        (CHILD_SUCCESS_TEXT, None),
+        (CHILD_MENU_TEXT, CHILD_MENU_BUTTONS),
+    ]
+    assert 123456 not in registration_sessions
+
+
+def test_parent_registration_completes_and_shows_menu():
+    session_event = FakeCallbackEvent(123456, b"role:parent")
+    asyncio.run(handle_role(session_event))
+
+    login_event = FakeMessageEvent(123456, "parent@example.com")
+    backend = FakeBackend()
+    asyncio.run(handle_registration_message(login_event, backend))
+
+    password_event = FakeMessageEvent(123456, "SecretPassword123")
+    asyncio.run(handle_registration_message(password_event, backend))
+
+    assert password_event.responses == [
+        (PARENT_SUCCESS_TEXT, None),
+        (PARENT_MENU_TEXT, PARENT_MENU_BUTTONS),
+    ]
     assert 123456 not in registration_sessions
 
 
