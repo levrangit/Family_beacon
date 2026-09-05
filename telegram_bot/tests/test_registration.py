@@ -164,6 +164,53 @@ def test_parent_registration_rejects_empty_password():
     except ValueError as exc:
         assert str(exc) == "Password is required"
 
+    assert session.state == "waiting_password"
+
+
+def test_parent_registration_rejects_weak_password():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_parent_registration()
+    session.set_login("parent@example.com")
+
+    try:
+        session.complete_parent_registration("abc")
+        assert False, "Weak password must be rejected"
+    except ValueError as exc:
+        assert str(exc) == "Password is too weak"
+
+    assert session.state == "waiting_password"
+
+
+def test_parent_registration_rejects_password_without_digit():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_parent_registration()
+    session.set_login("parent@example.com")
+
+    try:
+        session.complete_parent_registration("abcdefgh")
+        assert False, "Password without a digit must be rejected"
+    except ValueError as exc:
+        assert str(exc) == "Password is too weak"
+
+    assert session.state == "waiting_password"
+
+
+def test_parent_registration_rejects_password_without_letter():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_parent_registration()
+    session.set_login("parent@example.com")
+
+    try:
+        session.complete_parent_registration("12345678")
+        assert False, "Password without a letter must be rejected"
+    except ValueError as exc:
+        assert str(exc) == "Password is too weak"
+
+    assert session.state == "waiting_password"
+
 
 def test_parent_registration_cannot_complete_before_login_step():
     session = RegistrationSession(telegram_id=123456789)
