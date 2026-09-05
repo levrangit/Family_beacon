@@ -10,6 +10,84 @@ def test_new_user_can_start_parent_registration():
     assert session.state == "waiting_login"
 
 
+def test_new_user_can_start_child_registration():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_child_registration()
+
+    assert session.role == "child"
+    assert session.state == "waiting_invite_code"
+
+
+def test_child_registration_accepts_invite_code_and_normalizes_it():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_child_registration()
+    session.set_invite_code(" abcd-2345 ")
+
+    assert session.invite_code == "ABCD-2345"
+    assert session.state == "waiting_child_name"
+
+
+def test_child_registration_completes_with_name():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_child_registration()
+    session.set_invite_code("ABCD-2345")
+
+    result = session.complete_child_registration(" Alice ")
+
+    assert session.state == "completed"
+    assert result == {
+        "telegram_id": 123456789,
+        "invite_code": "ABCD-2345",
+        "child_name": "Alice",
+    }
+
+
+def test_child_registration_requires_invite_code():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_child_registration()
+
+    try:
+        session.complete_child_registration("Alice")
+        assert False, "Child registration must not complete without invite code"
+    except ValueError as exc:
+        assert str(exc) == "Invite code is required"
+
+    assert session.state == "waiting_invite_code"
+
+
+def test_child_registration_rejects_empty_invite_code():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_child_registration()
+
+    try:
+        session.set_invite_code("   ")
+        assert False, "Empty invite code must be rejected"
+    except ValueError as exc:
+        assert str(exc) == "Invite code is required"
+
+    assert session.state == "waiting_invite_code"
+
+
+def test_child_registration_rejects_empty_name():
+    session = RegistrationSession(telegram_id=123456789)
+
+    session.start_child_registration()
+    session.set_invite_code("ABCD-2345")
+
+    try:
+        session.complete_child_registration("   ")
+        assert False, "Empty child name must be rejected"
+    except ValueError as exc:
+        assert str(exc) == "Child name is required"
+
+    assert session.state == "waiting_child_name"
+
+
 def test_parent_registration_accepts_login():
     session = RegistrationSession(telegram_id=123456789)
 
