@@ -26,12 +26,69 @@ class RpcQuery:
         )
 
 
+class TableQuery:
+    def __init__(self, data):
+        self.data = data
+
+    def select(self, *_fields):
+        return self
+
+    def eq(self, *_args):
+        return self
+
+    def order(self, *_args, **_kwargs):
+        return self
+
+    def maybe_single(self):
+        return self
+
+    def execute(self):
+        return Response(self.data)
+
+
 class FakeAdminClient:
     def __init__(self):
         self.rpc_calls = []
+        self.tables = {
+            "children": [
+                {
+                    "id": "child-1",
+                    "family_id": "family-1",
+                    "name": "Alice",
+                    "avatar_url": None,
+                    "telegram_id": 123456789,
+                    "is_active": True,
+                }
+            ],
+            "devices": [
+                {
+                    "id": "device-1",
+                    "child_id": "child-1",
+                    "device_id": "laptop-1",
+                    "name": "Laptop",
+                    "platform": "windows",
+                    "hostname": "alice-pc",
+                    "agent_version": "0.1.0",
+                    "is_online": True,
+                    "last_seen": "2026-09-05T09:00:00+00:00",
+                }
+            ],
+            "time_usage": [{"used_minutes": 15}],
+            "time_policies": [
+                {
+                    "daily_limit_minutes": 60,
+                    "start_time": "08:00:00",
+                    "end_time": "22:00:00",
+                    "is_enabled": True,
+                }
+            ],
+        }
 
     def rpc(self, name, params):
         return RpcQuery(self.rpc_calls, name, params)
+
+    def table(self, name):
+        return TableQuery(self.tables[name])
 
 
 def test_register_child_uses_atomic_database_rpc():
@@ -59,6 +116,17 @@ def test_register_child_uses_atomic_database_rpc():
             },
         )
     ]
+
+
+def test_get_dashboard_returns_child_devices_usage_and_policy():
+    service = TelegramChildService(FakeAdminClient())
+
+    result = service.get_dashboard(123456789)
+
+    assert result["child"]["name"] == "Alice"
+    assert result["devices"][0]["name"] == "Laptop"
+    assert result["today_usage"] == {"used_minutes": 15}
+    assert result["today_policy"]["daily_limit_minutes"] == 60
 
 
 def test_register_child_rejects_empty_invite_code():
