@@ -98,13 +98,15 @@ class TelegramChildService:
             )
             .eq("child_id", child_id)
             .eq("day_of_week", day_of_week)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
 
-        policy = policy_response.data
-        if isinstance(policy, list):
-            policy = policy[0] if policy else None
+        policies = policy_response.data or []
+        if isinstance(policies, dict):
+            policy = policies
+        else:
+            policy = policies[0] if policies else None
 
         return {
             "child": child,
