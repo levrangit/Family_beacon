@@ -198,6 +198,23 @@ async def telegram_parent_family_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+class TelegramParentFamilyRenameRequest(BaseModel):
+    name: str
+
+
+@app.patch("/telegram/parent/family/{telegram_id}")
+async def telegram_parent_family_rename_endpoint(
+    telegram_id: int,
+    data: TelegramParentFamilyRenameRequest,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.rename_family(telegram_id, data.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.get("/telegram/parent/children/{telegram_id}")
 async def telegram_parent_children_endpoint(
     telegram_id: int,
@@ -206,6 +223,19 @@ async def telegram_parent_children_endpoint(
     service = _telegram_parent_service(x_telegram_bot_key)
     try:
         return service.get_children(telegram_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/telegram/parent/children/{telegram_id}/{child_id}/dashboard")
+async def telegram_parent_child_dashboard_endpoint(
+    telegram_id: int,
+    child_id: str,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    service = _telegram_parent_service(x_telegram_bot_key)
+    try:
+        return service.get_child_dashboard(telegram_id, child_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
