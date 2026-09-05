@@ -39,6 +39,9 @@ class TableQuery:
     def order(self, *_args, **_kwargs):
         return self
 
+    def limit(self, *_args, **_kwargs):
+        return self
+
     def maybe_single(self):
         return self
 
@@ -127,6 +130,16 @@ def test_get_dashboard_returns_child_devices_usage_and_policy():
     assert result["devices"][0]["name"] == "Laptop"
     assert result["today_usage"] == {"used_minutes": 15}
     assert result["today_policy"]["daily_limit_minutes"] == 60
+
+
+def test_get_dashboard_allows_missing_time_policy():
+    client = FakeAdminClient()
+    client.tables["time_policies"] = []
+    service = TelegramChildService(client)
+
+    result = service.get_dashboard(123456789)
+
+    assert result["today_policy"] is None
 
 
 def test_register_child_rejects_empty_invite_code():
