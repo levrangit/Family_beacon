@@ -6,14 +6,16 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QFont, QMouseEvent
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
+from .ui.notification import CopyNotification
 from .ui.theme import PAIRING_WINDOW_QSS
 from .ui.titlebar import TitleBar
 
 ICON_PATH = Path(__file__).resolve().parent / "tray" / "assets" / "family_beacon.svg"
 WINDOW_TITLE = "Подключение устройства"
+DEFAULT_DEVICE_NAME = "Новое устройство"
 
 
 class DevicePairingWindow(QDialog):
@@ -32,7 +34,6 @@ class DevicePairingWindow(QDialog):
         self._on_complete = on_complete
         self._on_cancel = on_cancel
         self._pairing_code = pairing_code
-        self._copy_notification_text = ""
 
         self.setObjectName("pairing_window")
         self.setWindowTitle(WINDOW_TITLE)
@@ -93,8 +94,14 @@ class DevicePairingWindow(QDialog):
         self._code_label.setObjectName("pairing_code")
         self._code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._code_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        code_font = self._code_label.font()
+        code_font.setUnderline(True)
+        self._code_label.setFont(code_font)
         self._code_label.mousePressEvent = self._copy_pairing_code
         root.addWidget(self._code_label)
+
+        self._copy_notification = CopyNotification(self)
+        root.addWidget(self._copy_notification)
 
         name_label = QLabel("Название устройства")
         name_label.setObjectName("field_label")
@@ -126,10 +133,10 @@ class DevicePairingWindow(QDialog):
 
     def _copy_pairing_code(self, _event: QMouseEvent) -> None:
         QApplication.clipboard().setText(self._pairing_code)
-        self._copy_notification_text = "Код скопирован"
+        self._copy_notification.show_message()
 
     def _complete(self) -> None:
-        device_name = self._device_name_edit.text().strip() or "Новое устройство"
+        device_name = self._device_name_edit.text().strip() or DEFAULT_DEVICE_NAME
         if self._on_complete is not None:
             self._on_complete(device_name, self._pairing_code)
         self.accept()
