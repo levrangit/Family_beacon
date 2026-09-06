@@ -111,4 +111,3 @@ def test_full_parent_invite_flow(supabase_service_client):
         if second_api is not None:
             second_api.close()
         api.close()
-        first_client.close()
