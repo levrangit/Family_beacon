@@ -6,6 +6,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QWidget, QLabel
 
 from agent.device_agent.device_pairing_window import (
@@ -261,4 +262,105 @@ def test_pairing_window_theme_matches_shared_qss() -> None:
     _app()
     window = DevicePairingWindow(child_name="Алексей")
     assert window.styleSheet() == PAIRING_WINDOW_QSS
+    window.close()
+
+
+def test_pairing_window_uses_custom_frameless_window() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    assert window.windowFlags() & Qt.WindowType.FramelessWindowHint
+    window.close()
+
+
+def test_pairing_window_has_custom_titlebar() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    titlebar = window.findChild(QWidget, "titlebar")
+    assert titlebar is not None
+    window.close()
+
+
+def test_custom_titlebar_has_family_beacon_icon() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    icon = window.findChild(QLabel, "titlebar_icon")
+    assert icon is not None
+    assert not icon.pixmap().isNull()
+    window.close()
+
+
+def test_custom_titlebar_has_window_title() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    title = window.findChild(QLabel, "titlebar_title")
+    assert title is not None
+    assert title.text() == "Подключение устройства"
+    window.close()
+
+
+def test_custom_titlebar_has_window_control_buttons() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    assert window.findChild(QPushButton, "titlebar_minimize") is not None
+    assert window.findChild(QPushButton, "titlebar_maximize") is not None
+    assert window.findChild(QPushButton, "titlebar_close") is not None
+    window.close()
+
+
+def test_custom_titlebar_has_family_beacon_rounded_container() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    container = window.findChild(QWidget, "pairing_container")
+    assert container is not None
+    assert "border-radius" in container.styleSheet()
+    window.close()
+
+
+def test_custom_minimize_button_minimizes_window() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    window.show()
+    _app().processEvents()
+    button = window.findChild(QPushButton, "titlebar_minimize")
+    assert button is not None
+    button.click()
+    _app().processEvents()
+    assert window.isMinimized()
+    window.close()
+
+
+def test_custom_maximize_button_toggles_maximized_state() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    window.show()
+    _app().processEvents()
+    button = window.findChild(QPushButton, "titlebar_maximize")
+    assert button is not None
+    button.click()
+    _app().processEvents()
+    assert window.isMaximized()
+    button.click()
+    _app().processEvents()
+    assert not window.isMaximized()
+    window.close()
+
+
+def test_custom_close_button_closes_window() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    window.show()
+    _app().processEvents()
+    button = window.findChild(QPushButton, "titlebar_close")
+    assert button is not None
+    button.click()
+    _app().processEvents()
+    assert not window.isVisible()
+
+
+def test_titlebar_exposes_system_move_handler() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    titlebar = window.findChild(QWidget, "titlebar")
+    assert titlebar is not None
+    assert hasattr(titlebar, "start_system_move")
     window.close()
