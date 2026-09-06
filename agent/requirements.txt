@@ -1,0 +1,1 @@
+# Device Agent 0.1.0 intentionally has no third-party runtime dependencies.
