@@ -59,7 +59,9 @@ async def parent_action_handler(event: events.CallbackQuery.Event) -> None:
     await handle_parent_action(event, backend)
 
 
-@client.on(events.CallbackQuery(pattern=r"^child:device_(?:register)$|^child:devices_menu$"))
+@client.on(events.CallbackQuery(
+    pattern=r"^child:(?:device_(?:register|registration_back)|devices_menu)$"
+))
 async def child_device_registration_action_handler(event: events.CallbackQuery.Event) -> None:
     await handle_device_registration_action(event, backend, registration_sessions)
 
