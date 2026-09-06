@@ -51,8 +51,8 @@ jobs:
 
       - name: Create temporary test parent
         run: |
-          TEST_PARENT_EMAIL="pytest-ci-parent-$(python -c 'import uuid; print(uuid.uuid4().hex)')@example.com"
-          TEST_PARENT_PASSWORD="Ci-Test-$(python -c 'import uuid; print(uuid.uuid4().hex)')-Aa1!"
+          export TEST_PARENT_EMAIL="pytest-ci-parent-$(python -c 'import uuid; print(uuid.uuid4().hex)')@example.com"
+          export TEST_PARENT_PASSWORD="Ci-Test-$(python -c 'import uuid; print(uuid.uuid4().hex)')-Aa1!"
 
           RESPONSE=$(curl --fail --silent --show-error \
             -X POST "$SUPABASE_URL/auth/v1/admin/users" \
