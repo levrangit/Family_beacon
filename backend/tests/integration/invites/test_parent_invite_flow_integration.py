@@ -15,12 +15,16 @@ def test_full_parent_invite_flow(supabase_service_client):
     first_parent_email = os.getenv("TEST_PARENT_EMAIL") or os.getenv("TEST_EMAIL")
     first_parent_password = os.getenv("TEST_PARENT_PASSWORD") or os.getenv("TEST_PASSWORD")
     second_parent_password = os.getenv("TEST_SECOND_PARENT_PASSWORD")
+    telegram_bot_shared_secret = os.getenv("TELEGRAM_BOT_SHARED_SECRET")
 
     if not first_parent_email or not first_parent_password or not second_parent_password:
         pytest.fail(
             "TEST_PARENT_EMAIL, TEST_PARENT_PASSWORD and "
             "TEST_SECOND_PARENT_PASSWORD are required for the integration test"
         )
+
+    if not telegram_bot_shared_secret:
+        pytest.fail("TELEGRAM_BOT_SHARED_SECRET is required for the integration test")
 
     if not SUPABASE_URL or not SUPABASE_KEY:
         pytest.fail("Supabase configuration is required for the integration test")
@@ -65,6 +69,7 @@ def test_full_parent_invite_flow(supabase_service_client):
         second_parent_email = f"family-beacon-integration-{uuid.uuid4().hex}@example.com"
         registration_response = requests.post(
             f"{api_url}/auth/register-parent",
+            headers={"X-Telegram-Bot-Key": telegram_bot_shared_secret},
             json={
                 "telegram_id": int(uuid.uuid4().int % 2_000_000_000),
                 "login": second_parent_email,
