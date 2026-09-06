@@ -4,6 +4,7 @@ from telegram_bot.device_registration_handlers import (
     handle_device_registration_action,
     handle_device_registration_message,
 )
+from telegram_bot.family_rename_handlers import handle_family_rename_message
 
 from telethon import TelegramClient, events
 
@@ -40,6 +41,8 @@ async def registration_message_handler(event: events.NewMessage.Event) -> None:
     if event.raw_text and event.raw_text.startswith("/"):
         return
     if await handle_device_registration_message(event, backend, registration_sessions):
+        return
+    if await handle_family_rename_message(event, backend):
         return
     await handle_registration_message(event, backend)
 
