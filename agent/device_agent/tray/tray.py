@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 from typing import Callable
@@ -24,7 +25,9 @@ class DeviceAgentTray:
         self.tray = QSystemTrayIcon(app)
         self.tray.setToolTip("Family Beacon — Device Agent")
         self.tray.setIcon(QIcon(str(TRAY_ICON_PATH)))
-        self.tray.setContextMenu(build_tray_menu(self._on_register, self._quit))
+        self.tray.setContextMenu(
+            build_tray_menu(self._on_register, self._restart, self._quit)
+        )
 
     def show(self) -> None:
         """Show the Tray icon and start normal Tray operation."""
@@ -40,6 +43,12 @@ class DeviceAgentTray:
             QSystemTrayIcon.Information,
             3000,
         )
+
+    def _restart(self) -> None:
+        """Start a new Tray process and then close the current process."""
+        subprocess.Popen([sys.executable, *sys.argv], close_fds=True)
+        self.tray.hide()
+        self._app.quit()
 
     def _quit(self) -> None:
         """Stop only the Tray application; the Agent Service is independent."""
