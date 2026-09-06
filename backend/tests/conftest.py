@@ -6,6 +6,7 @@ import pytest
 from supabase import ClientOptions, create_client
 
 from tests.auth.client import AuthTestClient, SUPABASE_KEY, SUPABASE_URL
+from app.config import SUPABASE_SERVICE_ROLE_KEY
 from tests.auth.users import get_test_user
 
 
@@ -53,8 +54,28 @@ def parent_supabase_client():
         http_client.close()
 
 
+@pytest.fixture(scope="session")
+def supabase_service_client():
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        pytest.skip("SUPABASE_SERVICE_ROLE_KEY is required for tests that create temporary remote users")
+
+    http_client = httpx.Client(
+        timeout=httpx.Timeout(SUPABASE_HTTP_TIMEOUT),
+    )
+    supabase = create_client(
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        options=ClientOptions(httpx_client=http_client),
+    )
+
+    try:
+        yield supabase
+    finally:
+        http_client.close()
+
+
 @pytest.fixture
-def invite_redeemer_supabase_client():
+def invite_redeemer_supabase_client(supabase_service_client):
     email = f"pytest-invite-redeemer-{uuid.uuid4().hex}@example.com"
     password = f"Test-{uuid.uuid4().hex}-Aa1!"
     http_client = httpx.Client(
@@ -65,6 +86,8 @@ def invite_redeemer_supabase_client():
         SUPABASE_KEY,
         options=ClientOptions(httpx_client=http_client),
     )
+
+    user_id = None
 
     try:
         response = supabase.auth.sign_up(
@@ -78,6 +101,11 @@ def invite_redeemer_supabase_client():
                 },
             }
         )
+
+        if response.user is None:
+            raise RuntimeError("Test invite redeemer registration did not return a user")
+
+        user_id = response.user.id
 
         if not response.session:
             raise RuntimeError(
@@ -95,6 +123,8 @@ def invite_redeemer_supabase_client():
         supabase.test_access_token = access_token
         yield supabase
     finally:
+        if user_id is not None:
+            supabase_service_client.auth.admin.delete_user(user_id)
         http_client.close()
 
 
