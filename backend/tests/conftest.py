@@ -57,7 +57,10 @@ def parent_supabase_client():
 @pytest.fixture(scope="session")
 def supabase_service_client():
     if not SUPABASE_SERVICE_ROLE_KEY:
-        pytest.skip("SUPABASE_SERVICE_ROLE_KEY is required for tests that create temporary remote users")
+        pytest.fail(
+            "SUPABASE_SERVICE_ROLE_KEY is required for tests that create "
+            "temporary remote users or perform cleanup"
+        )
 
     http_client = httpx.Client(
         timeout=httpx.Timeout(SUPABASE_HTTP_TIMEOUT),
