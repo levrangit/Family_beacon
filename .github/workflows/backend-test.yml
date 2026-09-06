@@ -24,8 +24,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      TEST_PARENT_EMAIL: ${{ secrets.TEST_PARENT_EMAIL }}
-      TEST_PARENT_PASSWORD: ${{ secrets.TEST_PARENT_PASSWORD }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FAMILY_BEACON_API_URL: http://127.0.0.1:8000
 
     steps:
@@ -48,8 +47,26 @@ jobs:
         run: |
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_KEY"
-          test -n "$TEST_PARENT_EMAIL"
-          test -n "$TEST_PARENT_PASSWORD"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+
+      - name: Create temporary test parent
+        run: |
+          TEST_PARENT_EMAIL="pytest-ci-parent-$(python -c 'import uuid; print(uuid.uuid4().hex)')@example.com"
+          TEST_PARENT_PASSWORD="Ci-Test-$(python -c 'import uuid; print(uuid.uuid4().hex)')-Aa1!"
+
+          RESPONSE=$(curl --fail --silent --show-error \
+            -X POST "$SUPABASE_URL/auth/v1/admin/users" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            --data "$(python -c 'import json, os; print(json.dumps({"email": os.environ["TEST_PARENT_EMAIL"], "password": os.environ["TEST_PARENT_PASSWORD"], "email_confirm": True, "user_metadata": {"telegram_id": 900000000 + __import__("uuid").uuid4().int % 100000000}}))')")
+
+          echo "$RESPONSE" > /tmp/test-parent-response.json
+          TEST_PARENT_USER_ID=$(python -c 'import json; print(json.load(open("/tmp/test-parent-response.json"))["id"])')
+
+          echo "TEST_PARENT_EMAIL=$TEST_PARENT_EMAIL" >> "$GITHUB_ENV"
+          echo "TEST_PARENT_PASSWORD=$TEST_PARENT_PASSWORD" >> "$GITHUB_ENV"
+          echo "TEST_PARENT_USER_ID=$TEST_PARENT_USER_ID" >> "$GITHUB_ENV"
 
       - name: Start backend
         working-directory: backend
@@ -84,4 +101,15 @@ jobs:
         run: |
           if [ -f backend.pid ]; then
             kill "$(cat backend.pid)" 2>/dev/null || true
+          fi
+
+      - name: Delete temporary test parent
+        if: always()
+        run: |
+          if [ -n "${TEST_PARENT_USER_ID:-}" ]; then
+            curl --fail --silent --show-error \
+              -X DELETE "$SUPABASE_URL/auth/v1/admin/users/$TEST_PARENT_USER_ID" \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              >/dev/null
           fi
