@@ -6,9 +6,12 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton
+from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QWidget
 
-from agent.device_agent.device_pairing_window import DevicePairingWindow
+from agent.device_agent.device_pairing_window import (
+    DevicePairingWindow,
+    open_device_pairing_window,
+)
 
 
 def _app() -> QApplication:
@@ -114,3 +117,59 @@ def test_complete_registration_closes_window_and_returns_data() -> None:
 
     assert completed == [("Компьютер Алексея", "123-456")]
     assert not window.isVisible()
+
+
+def test_pairing_window_accepts_qt_parent() -> None:
+    _app()
+    parent = QWidget()
+    window = DevicePairingWindow(child_name="Алексей", parent=parent)
+
+    assert window.parentWidget() is parent
+
+    window.close()
+    parent.close()
+
+
+def test_open_device_pairing_window_creates_and_shows_window() -> None:
+    _app()
+    window = open_device_pairing_window(
+        child_name="Алексей",
+        pairing_code="123-456",
+    )
+    _app().processEvents()
+
+    assert isinstance(window, DevicePairingWindow)
+    assert window.isVisible()
+    assert window.pairing_code == "123-456"
+
+    window.close()
+
+
+def test_show_pairing_updates_pairing_code() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    window.show_pairing("654-321")
+
+    assert window.pairing_code == "654-321"
+    assert window.findChild(QPushButton, "complete") is not None
+
+    window.close()
+
+
+def test_complete_uses_default_name_when_device_name_is_blank() -> None:
+    _app()
+    completed: list[tuple[str, str]] = []
+    window = DevicePairingWindow(
+        child_name="Алексей",
+        pairing_code="123-456",
+        on_complete=lambda device_name, pairing_code: completed.append(
+            (device_name, pairing_code)
+        ),
+    )
+    window.device_name_edit.setText("   ")
+
+    window.complete_button.click()
+    _app().processEvents()
+
+    assert completed == [("Новое устройство", "123-456")]
