@@ -1,4 +1,4 @@
-from device_agent.identity import DeviceIdentity, get_os_session_identity
+from agent.device_agent.identity import DeviceIdentity, get_os_session_identity
 
 
 def test_identity_payload_shape() -> None:
