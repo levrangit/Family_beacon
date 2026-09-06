@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -16,13 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-
-FAMILY_BEACON_BACKGROUND = "#f7f9ff"
-FAMILY_BEACON_SURFACE = "#ffffff"
-FAMILY_BEACON_PRIMARY = "#005bbf"
-FAMILY_BEACON_OUTLINE = "#c1c6d6"
-FAMILY_BEACON_TEXT = "#181c20"
-FAMILY_BEACON_TEXT_VARIANT = "#414754"
+from .ui.theme import PAIRING_WINDOW_QSS
 
 
 class DevicePairingWindow(QDialog):
@@ -47,88 +40,11 @@ class DevicePairingWindow(QDialog):
         self._on_cancel = on_cancel
         self._pairing_code = pairing_code
 
+        self.setObjectName("pairing_window")
         self.setWindowTitle("Подключение устройства")
         self.setModal(True)
         self.setFixedSize(460, 430)
-        self.setStyleSheet(
-            f"""
-            QDialog {{
-                background: {FAMILY_BEACON_BACKGROUND};
-                color: {FAMILY_BEACON_TEXT};
-            }}
-            QLabel {{
-                color: {FAMILY_BEACON_TEXT};
-                font-family: 'Segoe UI';
-            }}
-            QLabel#title {{
-                color: {FAMILY_BEACON_TEXT};
-                font-size: 20pt;
-                font-weight: 700;
-            }}
-            QLabel#instructions {{
-                color: {FAMILY_BEACON_TEXT_VARIANT};
-                font-size: 10pt;
-                line-height: 1.4;
-            }}
-            QLabel#qr_placeholder {{
-                background: {FAMILY_BEACON_SURFACE};
-                color: {FAMILY_BEACON_TEXT_VARIANT};
-                border: 1px solid {FAMILY_BEACON_OUTLINE};
-                border-radius: 14px;
-                font-size: 10pt;
-            }}
-            QLabel#pairing_code {{
-                color: {FAMILY_BEACON_PRIMARY};
-                font-family: 'Segoe UI';
-                font-size: 18pt;
-                font-weight: 700;
-                letter-spacing: 2px;
-            }}
-            QLabel#field_label {{
-                color: {FAMILY_BEACON_TEXT_VARIANT};
-                font-size: 9pt;
-                font-weight: 600;
-            }}
-            QLineEdit#device_name {{
-                background: {FAMILY_BEACON_SURFACE};
-                color: {FAMILY_BEACON_TEXT};
-                border: 1px solid {FAMILY_BEACON_OUTLINE};
-                border-radius: 10px;
-                padding: 9px 12px;
-                font-family: 'Segoe UI';
-                font-size: 10pt;
-            }}
-            QLineEdit#device_name:focus {{
-                border: 2px solid {FAMILY_BEACON_PRIMARY};
-                padding: 8px 11px;
-            }}
-            QPushButton#cancel, QPushButton#complete {{
-                border-radius: 10px;
-                padding: 9px 16px;
-                min-height: 20px;
-                font-family: 'Segoe UI';
-                font-size: 10pt;
-                font-weight: 600;
-            }}
-            QPushButton#cancel {{
-                background: {FAMILY_BEACON_SURFACE};
-                color: {FAMILY_BEACON_TEXT};
-                border: 1px solid {FAMILY_BEACON_OUTLINE};
-            }}
-            QPushButton#cancel:hover {{
-                background: {FAMILY_BEACON_BACKGROUND};
-            }}
-            QPushButton#complete {{
-                background: {FAMILY_BEACON_PRIMARY};
-                color: white;
-                border: 1px solid {FAMILY_BEACON_PRIMARY};
-            }}
-            QPushButton#complete:hover {{
-                background: #1a73e8;
-                border-color: #1a73e8;
-            }}
-            """
-        )
+        self.setStyleSheet(PAIRING_WINDOW_QSS)
 
         self._build(child_name)
 
@@ -186,7 +102,6 @@ class DevicePairingWindow(QDialog):
         root.addWidget(self._device_name_edit)
 
         actions = QHBoxLayout()
-        actions.setSpacing(10)
         actions.addStretch()
 
         self._cancel_button = QPushButton("Отмена")
