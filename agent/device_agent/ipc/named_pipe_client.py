@@ -22,10 +22,8 @@ class NamedPipeIPCClient:
 
     def connect(self) -> bool:
         """Connect to the local Device Agent Service Named Pipe."""
-        if os.name != "nt":
-            raise ConnectionError("Windows Named Pipes are available only on Windows")
-        if not self.endpoint.startswith(PIPE_PREFIX):
-            raise ConnectionError("Unsupported Named Pipe endpoint")
+        self._ensure_windows()
+        self._ensure_supported_endpoint()
 
         try:
             self._connection = Client(self.endpoint, family="AF_PIPE")
@@ -35,18 +33,18 @@ class NamedPipeIPCClient:
 
     def close(self) -> None:
         """Close the Named Pipe connection."""
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None
+        if self._connection is None:
+            return
+        self._connection.close()
+        self._connection = None
 
     def request(self, message: dict[str, Any]) -> dict[str, Any]:
         """Send one request and return one response."""
-        if self._connection is None:
-            raise ConnectionError("IPC client is not connected")
+        connection = self._require_connection()
 
         try:
-            self._connection.send_bytes(encode_message(message))
-            data = self._connection.recv_bytes(MAX_MESSAGE_SIZE)
+            connection.send_bytes(encode_message(message))
+            data = connection.recv_bytes(MAX_MESSAGE_SIZE)
         except (OSError, EOFError, ConnectionError) as exc:
             raise ConnectionError("IPC request failed") from exc
 
@@ -54,3 +52,17 @@ class NamedPipeIPCClient:
             return decode_message(data)
         except (UnicodeDecodeError, ValueError, TypeError) as exc:
             raise ConnectionError("IPC service returned an invalid response") from exc
+
+    @staticmethod
+    def _ensure_windows() -> None:
+        if os.name != "nt":
+            raise ConnectionError("Windows Named Pipes are available only on Windows")
+
+    def _ensure_supported_endpoint(self) -> None:
+        if not self.endpoint.startswith(PIPE_PREFIX):
+            raise ConnectionError("Unsupported Named Pipe endpoint")
+
+    def _require_connection(self) -> Any:
+        if self._connection is None:
+            raise ConnectionError("IPC client is not connected")
+        return self._connection
