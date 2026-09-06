@@ -158,17 +158,16 @@ def test_redeem_family_invite_endpoint_rejects_used_code():
 
 def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
     parent_supabase_client,
+    parent_family_id,
     invite_redeemer_supabase_client,
     supabase_service_client,
 ):
     from app import main
     from app.family_invites import create_family_invite
 
-    family_id = "a0b728c8-ff11-43f1-ad73-c184ec6926d6"
-
     created = create_family_invite(
         parent_supabase_client,
-        family_id,
+        parent_family_id,
     )
 
     app.dependency_overrides[get_current_user] = lambda: (
@@ -189,7 +188,7 @@ def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
 
             assert first_response.status_code == 200
             assert first_response.json()["invite_id"] == created["invite_id"]
-            assert first_response.json()["family_id"] == family_id
+            assert first_response.json()["family_id"] == parent_family_id
 
             second_response = client.post(
                 "/families/redeem-invite",
