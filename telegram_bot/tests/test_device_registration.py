@@ -1,4 +1,4 @@
-from telegram_bot.device_registration import registration_result
+from telegram_bot.device_registration_handlers import registration_result
 from telegram_bot.registration import RegistrationSession
 
 
