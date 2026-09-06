@@ -9,7 +9,7 @@ from app.main import app
 
 
 @pytest.mark.real_e2e
-def test_real_registration_family_invite_redeem_flow():
+def test_real_registration_family_invite_redeem_flow(supabase_service_client):
     """Exercise the real Supabase-backed parent-to-parent flow.
 
     No auth, RPC, or invite-hash calls are mocked. Two temporary Supabase
@@ -30,8 +30,14 @@ def test_real_registration_family_invite_redeem_flow():
     parent2_email = f"e2e-parent2-{suffix}@example.com"
     password = "E2e-Test-Password-2026!"
 
-    with TestClient(app) as client:
-        # 1. Real parent registration through the API.
+    parent1_user_id = None
+    parent2_user_id = None
+    family_id = None
+    invite_id = None
+
+    try:
+        with TestClient(app) as client:
+            # 1. Real parent registration through the API.
         register1 = client.post(
             "/auth/register-parent",
             json={
@@ -45,6 +51,7 @@ def test_real_registration_family_invite_redeem_flow():
         assert parent1["user_id"]
         assert parent1["access_token"]
 
+        parent1_user_id = parent1["user_id"]
         parent1_headers = {"Authorization": f"Bearer {parent1['access_token']}"}
 
         # 2. The first registered parent creates a real family via the DB RPC.
@@ -64,7 +71,8 @@ def test_real_registration_family_invite_redeem_flow():
         )
         assert create_invite.status_code == 200, create_invite.text
         invite = create_invite.json()
-        assert invite["invite_id"]
+        invite_id = invite["invite_id"]
+        assert invite_id
         assert invite["family_id"] == family_id
         assert invite["code"]
         assert invite["expires_at"]
@@ -80,7 +88,8 @@ def test_real_registration_family_invite_redeem_flow():
         )
         assert register2.status_code == 200, register2.text
         parent2 = register2.json()
-        assert parent2["user_id"]
+        parent2_user_id = parent2["user_id"]
+        assert parent2_user_id
         assert parent2["access_token"]
         assert parent2["user_id"] != parent1["user_id"]
 
@@ -106,3 +115,17 @@ def test_real_registration_family_invite_redeem_flow():
         )
         assert family.status_code == 200, family.text
         assert family.json()["id"] == family_id
+
+    finally:
+        if invite_id is not None:
+            supabase_service_client.table("family_invites").delete().eq(
+                "id", invite_id
+            ).execute()
+        if family_id is not None:
+            supabase_service_client.table("families").delete().eq(
+                "id", family_id
+            ).execute()
+        if parent2_user_id is not None:
+            supabase_service_client.auth.admin.delete_user(parent2_user_id)
+        if parent1_user_id is not None:
+            supabase_service_client.auth.admin.delete_user(parent1_user_id)
