@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import socket
 import threading
 from typing import Any
+
+from .protocol import MAX_MESSAGE_SIZE, decode_message, encode_message
 
 
 class IPCServer:
@@ -13,6 +14,7 @@ class IPCServer:
 
     def __init__(self) -> None:
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(("127.0.0.1", 0))
         self._socket.listen(1)
         self._socket.settimeout(0.2)
@@ -22,6 +24,7 @@ class IPCServer:
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
+        """Start serving requests in a background thread."""
         if self._running:
             return
         self._running = True
@@ -29,6 +32,10 @@ class IPCServer:
         self._thread.start()
 
     def stop(self) -> None:
+        """Stop the server and release its listening socket."""
+        if not self._running:
+            self._socket.close()
+            return
         self._running = False
         if self._thread is not None:
             self._thread.join(timeout=1)
@@ -45,12 +52,15 @@ class IPCServer:
                 break
 
             with connection:
-                data = connection.recv(64 * 1024)
+                data = connection.recv(MAX_MESSAGE_SIZE)
                 if not data:
                     continue
-                request = json.loads(data.decode("utf-8"))
-                response = self._handle(request)
-                connection.sendall(json.dumps(response).encode("utf-8"))
+                try:
+                    request = decode_message(data)
+                    response = self._handle(request)
+                    connection.sendall(encode_message(response))
+                except (UnicodeDecodeError, ValueError, TypeError):
+                    connection.sendall(encode_message({"ok": False}))
 
     @staticmethod
     def _handle(request: dict[str, Any]) -> dict[str, Any]:
