@@ -31,13 +31,14 @@ class DevicePairingWindow(QDialog):
         self._on_complete = on_complete
         self._on_cancel = on_cancel
         self._pairing_code = pairing_code
+        self._copy_notification_text = ""
 
         self.setObjectName("pairing_window")
         self.setWindowTitle(WINDOW_TITLE)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setFixedSize(460, 472)
+        self.setFixedSize(460, 340)
         self.setStyleSheet(PAIRING_WINDOW_QSS)
 
         self._build()
@@ -81,21 +82,17 @@ class DevicePairingWindow(QDialog):
 
         instructions = QLabel(
             "1. Установите приложение «Семейный маяк» на устройство\n"
-            "2. Введите код сопряжения или отсканируйте QR-код:"
+            "2. Введите код сопряжения:"
         )
         instructions.setObjectName("instructions")
         instructions.setWordWrap(True)
         root.addWidget(instructions)
 
-        qr = QLabel("QR\nбудет создан\nздесь")
-        qr.setObjectName("qr_placeholder")
-        qr.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        qr.setFixedSize(120, 120)
-        root.addWidget(qr, alignment=Qt.AlignmentFlag.AlignCenter)
-
         self._code_label = QLabel(self._pairing_code or "Код сопряжения появится здесь")
         self._code_label.setObjectName("pairing_code")
         self._code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._code_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._code_label.mousePressEvent = self._copy_pairing_code
         root.addWidget(self._code_label)
 
         name_label = QLabel("Название устройства")
@@ -125,6 +122,10 @@ class DevicePairingWindow(QDialog):
     def show_pairing(self, pairing_code: str) -> None:
         self._pairing_code = pairing_code
         self._code_label.setText(pairing_code)
+
+    def _copy_pairing_code(self, _event: QMouseEvent) -> None:
+        QApplication.clipboard().setText(self._pairing_code)
+        self._copy_notification_text = "Код скопирован"
 
     def _complete(self) -> None:
         device_name = self._device_name_edit.text().strip() or "Новое устройство"
