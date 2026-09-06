@@ -5,15 +5,15 @@ based on the existing Family Beacon web AddDeviceModal, but this is a separate
 Agent UI component and does not depend on the frontend application.
 
 Stage 1 intentionally contains presentation and local interaction only. The
-pairing code is supplied by the Agent through ``show_pairing`` and is not
-hard-coded here. Backend registration/approval is deliberately not implemented
-in this module yet.
+pairing code is supplied by the Agent through ``show_pairing`` and is not hard-coded
+here. The device platform is supplied by the Agent as well, so the user does not
+select an operating system in this window. Backend registration/approval is
+deliberately not implemented in this module yet.
 """
 
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
 from typing import Callable, Optional
 
 
@@ -22,14 +22,14 @@ class DevicePairingWindow(tk.Toplevel):
 
     The window mirrors the existing web pairing dialog:
     - title with the selected child's name;
-    - Windows/macOS/iPhone/iPad/Android selector;
     - instructions and pairing code;
     - device name field;
     - Cancel and Complete Pairing actions.
 
-    ``on_complete`` receives ``(platform, device_name, pairing_code)``. The
-    callback is intentionally injected so the Agent can later connect this UI
-    to the real registration-request flow without coupling the window to the
+    The device platform is known by the Agent and is therefore not selected
+    by the child. ``on_complete`` receives ``(device_name, pairing_code)``.
+    The callback is intentionally injected so the Agent can later connect this
+    UI to the real registration-request flow without coupling the window to the
     backend.
     """
 
@@ -40,28 +40,19 @@ class DevicePairingWindow(tk.Toplevel):
     MUTED = "#414754"
     PRIMARY = "#005bbf"
     PRIMARY_DARK = "#004493"
-    PRIMARY_LIGHT = "#d8e2ff"
-
-    PLATFORMS = (
-        ("windows", "Windows"),
-        ("macos", "macOS"),
-        ("ios", "iPhone/iPad"),
-        ("android", "Android"),
-    )
 
     def __init__(
         self,
         parent: tk.Misc,
         *,
         child_name: str,
-        on_complete: Optional[Callable[[str, str, str], None]] = None,
+        on_complete: Optional[Callable[[str, str], None]] = None,
         on_cancel: Optional[Callable[[], None]] = None,
     ) -> None:
         super().__init__(parent)
         self._on_complete = on_complete
         self._on_cancel = on_cancel
         self._pairing_code = ""
-        self._platform = tk.StringVar(value="windows")
         self._device_name = tk.StringVar(value="Новый компьютер")
 
         self.title(f"Подключение устройства для {child_name}")
@@ -101,24 +92,6 @@ class DevicePairingWindow(tk.Toplevel):
             activeforeground=self.TEXT,
             font=("Segoe UI", 13),
         ).pack(side="right")
-
-        platforms = tk.Frame(content, bg=self.WHITE)
-        platforms.pack(fill="x", pady=(0, 14))
-        self._platform_buttons: dict[str, tk.Button] = {}
-        for key, label in self.PLATFORMS:
-            button = tk.Button(
-                platforms,
-                text=label,
-                command=lambda value=key: self._select_platform(value),
-                relief="solid",
-                bd=1,
-                padx=9,
-                pady=7,
-                font=("Segoe UI", 9, "bold"),
-            )
-            button.pack(side="left", padx=(0, 6))
-            self._platform_buttons[key] = button
-        self._refresh_platform_buttons()
 
         info = tk.Frame(content, bg=self.BG, padx=16, pady=14)
         info.pack(fill="x", pady=(0, 14))
@@ -206,19 +179,6 @@ class DevicePairingWindow(tk.Toplevel):
             font=("Segoe UI", 9, "bold"),
         ).pack(side="right")
 
-    def _select_platform(self, value: str) -> None:
-        self._platform.set(value)
-        self._refresh_platform_buttons()
-
-    def _refresh_platform_buttons(self) -> None:
-        for key, button in self._platform_buttons.items():
-            selected = key == self._platform.get()
-            button.configure(
-                bg=self.PRIMARY_LIGHT if selected else self.BG,
-                fg="#001a41" if selected else self.MUTED,
-                activebackground=self.PRIMARY_LIGHT if selected else self.BG,
-            )
-
     def show_pairing(self, pairing_code: str) -> None:
         """Display a real temporary pairing code supplied by the Agent/backend."""
         self._pairing_code = pairing_code
@@ -227,7 +187,6 @@ class DevicePairingWindow(tk.Toplevel):
     def _complete(self) -> None:
         if self._on_complete is not None:
             self._on_complete(
-                self._platform.get(),
                 self._device_name.get().strip() or "Новое устройство",
                 self._pairing_code,
             )
@@ -253,7 +212,7 @@ def open_device_pairing_window(
     *,
     child_name: str,
     pairing_code: str = "",
-    on_complete: Optional[Callable[[str, str, str], None]] = None,
+    on_complete: Optional[Callable[[str, str], None]] = None,
     on_cancel: Optional[Callable[[], None]] = None,
 ) -> DevicePairingWindow:
     """Open the Agent pairing window and optionally display its current code."""
