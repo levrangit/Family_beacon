@@ -11,7 +11,7 @@ CHILD_MENU_TEXT = f"🌟 Семейный маяк · {get_project_version()}"
 CHILD_MENU_BUTTONS = [
     [Button.inline("👤 Профиль", b"child:profile")],
     [Button.inline("⏱ Время", b"child:time")],
-    [Button.inline("💻 Устройства", b"child:devices")],
+    [Button.inline("💻 Устройства", b"child:devices_menu")],
 ]
 
 CHILD_DEVICES_BUTTONS = [
