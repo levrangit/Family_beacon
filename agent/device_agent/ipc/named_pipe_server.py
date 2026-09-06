@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import ctypes
+import os
 import threading
+import uuid
 from typing import Any
 
 from .protocol import MAX_MESSAGE_SIZE, decode_message, encode_message
@@ -11,7 +13,7 @@ from .protocol import MAX_MESSAGE_SIZE, decode_message, encode_message
 
 PIPE_PREFIX = r"\\.\pipe\family-beacon"
 
-if __import__("os").name == "nt":
+if os.name == "nt":
     from ctypes import wintypes
 
     _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -26,7 +28,6 @@ if __import__("os").name == "nt":
 
     _kernel32.CreateNamedPipeW.argtypes = [
         wintypes.LPCWSTR,
-        wintypes.DWORD,
         wintypes.DWORD,
         wintypes.DWORD,
         wintypes.DWORD,
@@ -63,9 +64,9 @@ class NamedPipeIPCServer:
     """Small request/response server backed by a Windows Named Pipe."""
 
     def __init__(self) -> None:
-        if __import__("os").name != "nt":
+        if os.name != "nt":
             raise OSError("Windows Named Pipes are available only on Windows")
-        self.endpoint = PIPE_PREFIX
+        self.endpoint = f"{PIPE_PREFIX}-{uuid.uuid4().hex}"
         self._running = False
         self._thread: threading.Thread | None = None
         self._handle = None
