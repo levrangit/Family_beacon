@@ -19,6 +19,10 @@ CHILD_DEVICES_BUTTONS = [
     [Button.inline("◀️ Назад", b"child:menu")],
 ]
 
+CHILD_DEVICE_REGISTRATION_BUTTONS = [
+    [Button.inline("◀️ Назад", b"child:device_registration_back")],
+]
+
 CHILD_BACK_BUTTON = [[Button.inline("◀️ Назад", b"child:menu")]]
 
 
