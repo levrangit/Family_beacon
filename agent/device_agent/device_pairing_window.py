@@ -6,13 +6,16 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
+from .ui.notification import CopyNotification
 from .ui.theme import PAIRING_WINDOW_QSS
 from .ui.titlebar import TitleBar
 
 ICON_PATH = Path(__file__).resolve().parent / "tray" / "assets" / "family_beacon.svg"
 WINDOW_TITLE = "Подключение устройства"
+DEFAULT_DEVICE_NAME = "Новое устройство"
 
 
 class DevicePairingWindow(QDialog):
@@ -37,7 +40,7 @@ class DevicePairingWindow(QDialog):
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setFixedSize(460, 472)
+        self.setFixedSize(460, 340)
         self.setStyleSheet(PAIRING_WINDOW_QSS)
 
         self._build()
@@ -81,22 +84,23 @@ class DevicePairingWindow(QDialog):
 
         instructions = QLabel(
             "1. Установите приложение «Семейный маяк» на устройство\n"
-            "2. Введите код сопряжения или отсканируйте QR-код:"
+            "2. Введите код сопряжения:"
         )
         instructions.setObjectName("instructions")
         instructions.setWordWrap(True)
         root.addWidget(instructions)
 
-        qr = QLabel("QR\nбудет создан\nздесь")
-        qr.setObjectName("qr_placeholder")
-        qr.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        qr.setFixedSize(120, 120)
-        root.addWidget(qr, alignment=Qt.AlignmentFlag.AlignCenter)
-
         self._code_label = QLabel(self._pairing_code or "Код сопряжения появится здесь")
         self._code_label.setObjectName("pairing_code")
         self._code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._code_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        code_font = self._code_label.font()
+        code_font.setUnderline(True)
+        self._code_label.setFont(code_font)
+        self._code_label.mousePressEvent = self._copy_pairing_code
         root.addWidget(self._code_label)
+
+        self._copy_notification = CopyNotification(self)
 
         name_label = QLabel("Название устройства")
         name_label.setObjectName("field_label")
@@ -126,8 +130,12 @@ class DevicePairingWindow(QDialog):
         self._pairing_code = pairing_code
         self._code_label.setText(pairing_code)
 
+    def _copy_pairing_code(self, _event: QMouseEvent) -> None:
+        QApplication.clipboard().setText(self._pairing_code)
+        self._copy_notification.show_message()
+
     def _complete(self) -> None:
-        device_name = self._device_name_edit.text().strip() or "Новое устройство"
+        device_name = self._device_name_edit.text().strip() or DEFAULT_DEVICE_NAME
         if self._on_complete is not None:
             self._on_complete(device_name, self._pairing_code)
         self.accept()
