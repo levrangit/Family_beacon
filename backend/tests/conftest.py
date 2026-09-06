@@ -77,6 +77,26 @@ def supabase_service_client():
         http_client.close()
 
 
+@pytest.fixture(scope="session")
+def parent_family_id(parent_supabase_client, supabase_service_client):
+    response = parent_supabase_client.rpc(
+        "create_family",
+        {"family_name": f"pytest-family-{uuid.uuid4().hex}"},
+    ).execute()
+
+    if response.data is None:
+        pytest.fail("Temporary test family ID was not returned")
+
+    family_id = str(response.data)
+
+    try:
+        yield family_id
+    finally:
+        supabase_service_client.table("families").delete().eq(
+            "id", family_id
+        ).execute()
+
+
 @pytest.fixture
 def invite_redeemer_supabase_client(supabase_service_client):
     email = f"pytest-invite-redeemer-{uuid.uuid4().hex}@example.com"
