@@ -24,7 +24,7 @@ The hostname is informational and is not used as device identity.
 From the repository root on Windows:
 
 ```text
-python -m device_agent.main
+python -m agent.device_agent.main
 ```
 
 ## Tests
@@ -35,7 +35,7 @@ From the repository root:
 pytest agent/tests
 ```
 
-The Agent currently uses only Python standard-library modules.
+The Agent currently uses only Python standard-library modules at runtime.
 
 ## Explicitly out of scope for 0.1.0
 
