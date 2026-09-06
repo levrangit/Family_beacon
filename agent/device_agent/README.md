@@ -1,12 +1,27 @@
-# Device Agent — pairing window
+# Device Agent — pairing window and Tray
 
 `device_pairing_window.py` contains the standalone Agent-side registration window.
+The Tray implementation lives under `tray/` and uses Python + PySide6.
 
 ## Current stage
 
-This component is a UI implementation based on the existing Family Beacon web
-`AddDeviceModal` visual design. It is intentionally decoupled from Supabase,
-Telegram, and the backend registration flow.
+The Device Agent Tray has a minimal working Windows-tested skeleton with the
+original Family Beacon lighthouse SVG as its Tray icon.
+
+Stage B adds a shared PySide6 visual system in `ui/theme.py`. Its tokens are
+kept aligned with the existing frontend design tokens: Family Beacon blue,
+light surfaces, neutral text, outlines, green secondary color, and the native
+Windows `Segoe UI` font.
+
+The Tray menu is intentionally lightweight and currently contains only:
+
+- `Регистрация` — temporary Stage A notification;
+- `Выйти` — closes the Tray process only.
+
+There is still no Backend, Supabase, Telegram, IPC, or Windows Service
+integration in this stage.
+
+## Pairing window
 
 The device platform is determined by the Agent, so the user does not select an
 operating system in this window. The pairing code is supplied to
