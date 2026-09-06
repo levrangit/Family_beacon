@@ -6,6 +6,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtGui import QFont, QPalette
 from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QWidget, QLabel
 
 from agent.device_agent.device_pairing_window import (
@@ -214,5 +215,80 @@ def test_pairing_window_has_requested_instructions() -> None:
         "1. Установите приложение «Семейный маяк» на устройство\n"
         "2. Введите код сопряжения или отсканируйте QR-код:"
     ]
+
+    window.close()
+
+
+def test_pairing_window_uses_family_beacon_light_background() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    background = window.palette().color(QPalette.ColorRole.Window).name()
+
+    assert background == "#f7f9ff"
+
+    window.close()
+
+
+def test_pairing_window_title_uses_large_bold_font() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    title = window.findChild(QLabel, "title")
+    assert title is not None
+
+    font: QFont = title.font()
+    assert font.pointSize() >= 18
+    assert font.bold()
+
+    window.close()
+
+
+def test_pairing_code_is_visually_emphasized_with_family_beacon_blue() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей", pairing_code="123-456")
+
+    code = window.findChild(QLabel, "pairing_code")
+    assert code is not None
+
+    assert code.palette().color(QPalette.ColorRole.WindowText).name() == "#005bbf"
+    assert code.font().bold()
+
+    window.close()
+
+
+def test_device_name_field_has_family_beacon_surface_and_outline() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    field = window.device_name_edit
+
+    assert field.palette().color(QPalette.ColorRole.Base).name() == "#ffffff"
+    assert "#c1c6d6" in field.styleSheet()
+
+    window.close()
+
+
+def test_complete_button_uses_family_beacon_primary_style() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    button = window.complete_button
+
+    assert button.isDefault()
+    assert "#005bbf" in button.styleSheet()
+    assert "border-radius" in button.styleSheet()
+
+    window.close()
+
+
+def test_cancel_button_uses_secondary_visual_style() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    button = window.cancel_button
+
+    assert "background" in button.styleSheet()
+    assert "border-radius" in button.styleSheet()
 
     window.close()
