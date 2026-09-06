@@ -1,6 +1,6 @@
 import requests
 
-from tests.auth.client import BASE_URL
+from tests.support.auth.client import BASE_URL
 
 
 def test_health():
