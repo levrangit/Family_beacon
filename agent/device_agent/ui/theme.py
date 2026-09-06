@@ -24,6 +24,45 @@ QDialog#pairing_window {{
     font-family: {FONT_FAMILY};
 }}
 
+QWidget#pairing_container {{
+    background: {BACKGROUND};
+    border-radius: 16px;
+}}
+
+QWidget#titlebar {{
+    background: transparent;
+}}
+
+QLabel#titlebar_title {{
+    color: {ON_SURFACE};
+    font-family: {FONT_FAMILY};
+    font-size: 10pt;
+    font-weight: 600;
+}}
+
+QPushButton#titlebar_minimize,
+QPushButton#titlebar_maximize,
+QPushButton#titlebar_close {{
+    background: transparent;
+    color: {ON_SURFACE_VARIANT};
+    border: none;
+    border-radius: 7px;
+    font-family: {FONT_FAMILY};
+    font-size: 13pt;
+    font-weight: 400;
+    padding: 0;
+}}
+
+QPushButton#titlebar_minimize:hover,
+QPushButton#titlebar_maximize:hover {{
+    background: {SURFACE_CONTAINER};
+}}
+
+QPushButton#titlebar_close:hover {{
+    background: {ERROR};
+    color: {SURFACE};
+}}
+
 QLabel#title {{
     color: {ON_SURFACE};
     font-family: {FONT_FAMILY};
