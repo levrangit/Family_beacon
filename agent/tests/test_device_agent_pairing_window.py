@@ -6,7 +6,8 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QPointF, Qt
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QPushButton, QWidget
 
 from agent.device_agent.device_pairing_window import (
@@ -26,6 +27,16 @@ from agent.device_agent.ui.theme import (
 
 def _app() -> QApplication:
     return QApplication.instance() or QApplication([])
+
+
+def _mouse_press_event() -> QMouseEvent:
+    return QMouseEvent(
+        QEvent.Type.MouseButtonPress,
+        QPointF(1, 1),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
 
 
 def test_pairing_window_can_be_created() -> None:
@@ -186,7 +197,7 @@ def test_pairing_window_has_requested_instructions() -> None:
     ]
     assert instructions == [
         "1. Установите приложение «Семейный маяк» на устройство\n"
-        "2. Введите код сопряжения или отсканируйте QR-код:"
+        "2. Введите код сопряжения:"
     ]
     window.close()
 
@@ -363,4 +374,60 @@ def test_titlebar_exposes_system_move_handler() -> None:
     titlebar = window.findChild(QWidget, "titlebar")
     assert titlebar is not None
     assert hasattr(titlebar, "start_system_move")
+    window.close()
+
+
+def test_pairing_code_is_clickable_link() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей", pairing_code="123-456")
+    code = window.findChild(QLabel, "pairing_code")
+    assert code is not None
+    assert code.text() == "123-456"
+    assert code.cursor().shape() == Qt.CursorShape.PointingHandCursor
+    window.close()
+
+
+def test_pairing_code_click_copies_code_to_clipboard() -> None:
+    app = _app()
+    window = DevicePairingWindow(child_name="Алексей", pairing_code="123-456")
+    code = window.findChild(QLabel, "pairing_code")
+    assert code is not None
+    app.clipboard().clear()
+    code.mousePressEvent(_mouse_press_event())
+    app.processEvents()
+    assert app.clipboard().text() == "123-456"
+    window.close()
+
+
+def test_pairing_code_click_shows_copied_message() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей", pairing_code="123-456")
+    code = window.findChild(QLabel, "pairing_code")
+    assert code is not None
+    code.mousePressEvent(_mouse_press_event())
+    _app().processEvents()
+    assert window._copy_notification_text == "Код скопирован"
+    window.close()
+
+
+def test_pairing_window_does_not_contain_qr_code() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей", pairing_code="123-456")
+    visible_labels = [widget.text() for widget in window.findChildren(QLabel)]
+    assert not any("QR" in text or "QR-код" in text for text in visible_labels)
+    window.close()
+
+
+def test_pairing_window_instructions_do_not_mention_qr_code() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    instructions = [
+        widget.text()
+        for widget in window.findChildren(QLabel)
+        if "Установите приложение" in widget.text()
+    ]
+    assert instructions == [
+        "1. Установите приложение «Семейный маяк» на устройство\n"
+        "2. Введите код сопряжения:"
+    ]
     window.close()
