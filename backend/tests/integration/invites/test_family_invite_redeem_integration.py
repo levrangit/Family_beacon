@@ -10,6 +10,7 @@ def supabase_client(parent_supabase_client):
     return parent_supabase_client
 
 
+@pytest.mark.integration
 def test_redeem_family_invite_integration(
     parent_supabase_client,
     parent_family_id,
@@ -35,6 +36,7 @@ def test_redeem_family_invite_integration(
         ).execute()
 
 
+@pytest.mark.integration
 def test_redeem_family_invite_cannot_be_used_twice(
     parent_supabase_client,
     parent_family_id,
@@ -65,6 +67,7 @@ def test_redeem_family_invite_cannot_be_used_twice(
         ).execute()
 
 
+@pytest.mark.integration
 def test_redeem_expired_family_invite_is_rejected(
     supabase_client,
     parent_family_id,
@@ -98,6 +101,7 @@ def test_redeem_expired_family_invite_is_rejected(
         ).execute()
 
 
+@pytest.mark.integration
 def test_redeem_revoked_family_invite_is_rejected(
     supabase_client,
     parent_family_id,
@@ -114,8 +118,7 @@ def test_redeem_revoked_family_invite_is_rejected(
         supabase_client.table("family_invites").update(
             {"revoked_at": revoked_at}
         ).eq(
-            "id",
-            created["invite_id"],
+            "id", created["invite_id"]
         ).execute()
 
         with pytest.raises(Exception, match="invalid|expired|revoked|used"):
