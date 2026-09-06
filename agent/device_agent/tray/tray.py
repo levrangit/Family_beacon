@@ -52,6 +52,10 @@ class DeviceAgentTray:
         )
         self._pairing_window.finished.connect(self._release_pairing_window)
 
+    def _registration_placeholder(self) -> None:
+        """Compatibility alias for the current registration test seam."""
+        self._open_pairing_window()
+
     def _release_pairing_window(self, _result: int | None = None) -> None:
         """Forget the pairing window after it has been closed."""
         self._pairing_window = None
