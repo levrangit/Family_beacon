@@ -22,7 +22,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      # Supabase project URL is public configuration, not a secret.
+      SUPABASE_URL: https://iybyejjezzagmtxskjcp.supabase.co
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FAMILY_BEACON_API_URL: http://127.0.0.1:8000
@@ -45,9 +46,9 @@ jobs:
 
       - name: Validate test environment
         run: |
-          test -n "$SUPABASE_URL"
-          test -n "$SUPABASE_KEY"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$SUPABASE_URL" || { echo "SUPABASE_URL is not configured"; exit 1; }
+          test -n "$SUPABASE_KEY" || { echo "SUPABASE_KEY GitHub Secret is not configured"; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "SUPABASE_SERVICE_ROLE_KEY GitHub Secret is not configured"; exit 1; }
 
       - name: Create temporary test parent
         run: |
