@@ -159,6 +159,7 @@ def test_redeem_family_invite_endpoint_rejects_used_code():
 def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
     parent_supabase_client,
     invite_redeemer_supabase_client,
+    supabase_service_client,
 ):
     from app import main
     from app.family_invites import create_family_invite
@@ -203,3 +204,6 @@ def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
     finally:
         main.get_user_client = original_get_user_client
         app.dependency_overrides.clear()
+        supabase_service_client.table("family_invites").delete().eq(
+            "id", created["invite_id"]
+        ).execute()
