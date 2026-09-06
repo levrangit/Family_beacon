@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QMouseEvent
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from .ui.notification import CopyNotification
@@ -101,7 +101,6 @@ class DevicePairingWindow(QDialog):
         root.addWidget(self._code_label)
 
         self._copy_notification = CopyNotification(self)
-        root.addWidget(self._copy_notification)
 
         name_label = QLabel("Название устройства")
         name_label.setObjectName("field_label")
