@@ -1,17 +1,8 @@
-import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pytest
-from dotenv import load_dotenv
 
 from app.family_invites import create_family_invite, redeem_family_invite
-
-
-load_dotenv(Path(".env"))
-
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 
 @pytest.fixture
