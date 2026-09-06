@@ -68,6 +68,32 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    async def submit_device_registration_code(
+        self,
+        telegram_id: int,
+        registration_code: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "telegram_id": telegram_id,
+            "registration_code": registration_code,
+        }
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                f"{self.base_url}/telegram/child/device-registration",
+                json=payload,
+                headers=self._headers(),
+            )
+
+        if response.status_code in {400, 409, 410}:
+            try:
+                return response.json()
+            except ValueError:
+                return {"status": "invalid"}
+
+        response.raise_for_status()
+        return response.json()
+
     async def get_child_dashboard(self, telegram_id: int) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
