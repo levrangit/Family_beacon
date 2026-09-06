@@ -36,10 +36,6 @@ class NamedPipeIPCServer:
     def stop(self) -> None:
         """Stop the server and release the Named Pipe listener."""
         if not self._running:
-            try:
-                self._listener.close()
-            except OSError:
-                pass
             return
 
         self._running = False
@@ -62,14 +58,21 @@ class NamedPipeIPCServer:
 
     @staticmethod
     def _serve_connection(connection: Any) -> None:
+        response = NamedPipeIPCServer._read_request(connection)
+        NamedPipeIPCServer._send_response(connection, response)
+
+    @staticmethod
+    def _read_request(connection: Any) -> dict[str, Any]:
         try:
             data = connection.recv_bytes(MAX_MESSAGE_SIZE)
             request = decode_message(data)
-            response = {"ok": True, "type": request.get("type")}
+            return {"ok": True, "type": request.get("type")}
         except (EOFError, OSError, UnicodeDecodeError, ValueError, TypeError):
-            response = {"ok": False}
+            return {"ok": False}
 
+    @staticmethod
+    def _send_response(connection: Any, response: dict[str, Any]) -> None:
         try:
             connection.send_bytes(encode_message(response))
         except (BrokenPipeError, EOFError, OSError):
-            pass
+            return
