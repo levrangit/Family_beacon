@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from .ui.theme import PAIRING_WINDOW_QSS
