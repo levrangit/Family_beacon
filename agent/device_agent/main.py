@@ -3,10 +3,11 @@
 from .config import load_config
 from .identity import collect_identity
 from .logging import setup_logging
+from .ui import AgentUI
 
 
 def main() -> int:
-    """Run the minimal identity-only Agent lifecycle."""
+    """Run the Agent identity initialization and user interface."""
 
     config = load_config()
     logger = setup_logging(config.log_level)
@@ -21,7 +22,10 @@ def main() -> int:
         identity.os_username,
         identity.os_session_identity,
     )
-    logger.info("Device Agent %s finished successfully", config.agent_version)
+
+    AgentUI().run()
+
+    logger.info("Device Agent %s stopped", config.agent_version)
     return 0
 
 
