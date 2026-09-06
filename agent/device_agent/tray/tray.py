@@ -7,9 +7,11 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
+from ..device_pairing_window import DevicePairingWindow, open_device_pairing_window
 from ..ui.theme import apply_family_beacon_theme
 from .menu import build_tray_menu
 
@@ -21,6 +23,7 @@ class DeviceAgentTray:
 
     def __init__(self, app: QApplication, *, on_register: Callable[[], None] | None = None) -> None:
         self._app = app
+        self._pairing_window: DevicePairingWindow | None = None
         self._on_register = on_register or self._registration_placeholder
         self.tray = QSystemTrayIcon(app)
         self.tray.setToolTip("Family Beacon — Device Agent")
@@ -36,13 +39,25 @@ class DeviceAgentTray:
         self.tray.show()
 
     def _registration_placeholder(self) -> None:
-        """Stage A placeholder for the future registration flow."""
-        self.tray.showMessage(
-            "Family Beacon",
-            "Регистрация будет подключена на следующем этапе.",
-            QSystemTrayIcon.Information,
-            3000,
+        """Open the local pairing window without contacting the backend."""
+        if self._pairing_window is not None:
+            if self._pairing_window.isVisible():
+                self._pairing_window.raise_()
+                self._pairing_window.activateWindow()
+                return
+            self._pairing_window = None
+
+        self._pairing_window = open_device_pairing_window(
+            child_name="Ребёнок",
+            on_cancel=self._release_pairing_window,
         )
+        self._pairing_window.finished.connect(
+            lambda _result: QTimer.singleShot(0, self._release_pairing_window)
+        )
+
+    def _release_pairing_window(self) -> None:
+        """Forget the pairing window after it has been closed."""
+        self._pairing_window = None
 
     def _restart(self) -> None:
         """Start a new Tray process and then close the current process."""
