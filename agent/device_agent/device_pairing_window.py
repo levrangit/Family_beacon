@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -15,16 +17,83 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .ui.theme import PAIRING_WINDOW_QSS
+from .ui.theme import PAIRING_WINDOW_QSS, PRIMARY, SURFACE
+
+ICON_PATH = Path(__file__).resolve().parent / "tray" / "assets" / "family_beacon.svg"
+
+
+class _TitleBar(QWidget):
+    """Custom title bar that delegates window movement to the native Qt API."""
+
+    def __init__(self, window: QDialog) -> None:
+        super().__init__(window)
+        self._window = window
+        self.setObjectName("titlebar")
+        self.setFixedHeight(42)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 6, 8, 4)
+        layout.setSpacing(8)
+
+        icon = QLabel(self)
+        icon.setObjectName("titlebar_icon")
+        icon.setPixmap(QIcon(str(ICON_PATH)).pixmap(22, 22))
+        icon.setFixedSize(22, 22)
+        layout.addWidget(icon)
+
+        title = QLabel("Подключение устройства", self)
+        title.setObjectName("titlebar_title")
+        layout.addWidget(title)
+        layout.addStretch()
+
+        minimize = self._button("—", "titlebar_minimize")
+        minimize.clicked.connect(window.showMinimized)
+        layout.addWidget(minimize)
+
+        maximize = self._button("□", "titlebar_maximize")
+        maximize.clicked.connect(self._toggle_maximize)
+        layout.addWidget(maximize)
+
+        close = self._button("×", "titlebar_close")
+        close.clicked.connect(window.close)
+        layout.addWidget(close)
+
+    @staticmethod
+    def _button(text: str, object_name: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setObjectName(object_name)
+        button.setFixedSize(34, 30)
+        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        return button
+
+    def _toggle_maximize(self) -> None:
+        if self._window.isMaximized():
+            self._window.showNormal()
+        else:
+            self._window.showMaximized()
+
+    def start_system_move(self) -> bool:
+        """Request a native window move for the current pointer position."""
+        handle = self._window.windowHandle()
+        return bool(handle and handle.startSystemMove())
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.start_system_move()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._toggle_maximize()
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
 
 class DevicePairingWindow(QDialog):
-    """Family Beacon Agent pairing window.
-
-    The Agent supplies the temporary pairing code. The user only provides a
-    friendly device name; operating-system selection is intentionally absent
-    because the Agent determines the platform itself.
-    """
+    """Family Beacon Agent pairing window with a custom title bar."""
 
     def __init__(
         self,
@@ -42,11 +111,58 @@ class DevicePairingWindow(QDialog):
 
         self.setObjectName("pairing_window")
         self.setWindowTitle("Подключение устройства")
+        self.setWindowFlags(
+            Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setFixedSize(460, 430)
-        self.setStyleSheet(PAIRING_WINDOW_QSS)
+        self.setFixedSize(460, 472)
+        self.setStyleSheet(PAIRING_WINDOW_QSS + self._titlebar_qss())
 
         self._build(child_name)
+
+    @staticmethod
+    def _titlebar_qss() -> str:
+        return f"""
+QWidget#pairing_container {{
+    background: #f7f9ff;
+    border-radius: 16px;
+}}
+
+QWidget#titlebar {{
+    background: transparent;
+}}
+
+QLabel#titlebar_title {{
+    color: #181c20;
+    font-family: "Segoe UI";
+    font-size: 10pt;
+    font-weight: 600;
+}}
+
+QPushButton#titlebar_minimize,
+QPushButton#titlebar_maximize,
+QPushButton#titlebar_close {{
+    background: transparent;
+    color: #414754;
+    border: none;
+    border-radius: 7px;
+    font-family: "Segoe UI";
+    font-size: 13pt;
+    font-weight: 400;
+    padding: 0;
+}}
+
+QPushButton#titlebar_minimize:hover,
+QPushButton#titlebar_maximize:hover {{
+    background: #ebeef4;
+}}
+
+QPushButton#titlebar_close:hover {{
+    background: #ba1a1a;
+    color: #ffffff;
+}}
+"""
 
     @property
     def pairing_code(self) -> str:
@@ -65,9 +181,20 @@ class DevicePairingWindow(QDialog):
         return self._complete_button
 
     def _build(self, child_name: str) -> None:
-        root = QVBoxLayout(self)
-        root.setContentsMargins(28, 24, 28, 24)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        container = QWidget(self)
+        container.setObjectName("pairing_container")
+        outer.addWidget(container)
+
+        root = QVBoxLayout(container)
+        root.setContentsMargins(28, 0, 28, 24)
         root.setSpacing(14)
+
+        titlebar = _TitleBar(self)
+        root.addWidget(titlebar)
 
         title = QLabel("Подключение устройства")
         title.setObjectName("title")
@@ -118,7 +245,6 @@ class DevicePairingWindow(QDialog):
         root.addLayout(actions)
 
     def show_pairing(self, pairing_code: str) -> None:
-        """Display a temporary pairing code supplied by the Agent."""
         self._pairing_code = pairing_code
         self._code_label.setText(pairing_code)
 
@@ -142,7 +268,6 @@ def open_device_pairing_window(
     on_cancel: Optional[Callable[[], None]] = None,
     parent: Optional[QWidget] = None,
 ) -> DevicePairingWindow:
-    """Create and show the Agent pairing window."""
     window = DevicePairingWindow(
         child_name=child_name,
         pairing_code=pairing_code,
