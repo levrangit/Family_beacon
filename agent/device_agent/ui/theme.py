@@ -76,21 +76,21 @@ QLabel#instructions {{
     font-size: 10pt;
 }}
 
-QLabel#qr_placeholder {{
-    background: {SURFACE};
-    color: {ON_SURFACE_VARIANT};
-    border: 1px solid {OUTLINE_VARIANT};
-    border-radius: 16px;
-    font-family: {FONT_FAMILY};
-    font-size: 10pt;
-}}
-
 QLabel#pairing_code {{
     color: {PRIMARY};
     font-family: {FONT_FAMILY};
     font-size: 22pt;
     font-weight: 700;
-    letter-spacing: 2px;
+}}
+
+QLabel#copy_notification {{
+    background: {ON_SURFACE};
+    color: {SURFACE};
+    border-radius: 9px;
+    padding: 7px 14px;
+    font-family: {FONT_FAMILY};
+    font-size: 9pt;
+    font-weight: 600;
 }}
 
 QLabel#field_label {{
