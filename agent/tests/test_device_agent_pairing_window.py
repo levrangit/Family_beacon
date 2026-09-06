@@ -6,7 +6,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QWidget
+from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QWidget, QLabel
 
 from agent.device_agent.device_pairing_window import (
     DevicePairingWindow,
@@ -173,3 +173,46 @@ def test_complete_uses_default_name_when_device_name_is_blank() -> None:
     _app().processEvents()
 
     assert completed == [("Новое устройство", "123-456")]
+    window.close()
+
+
+def test_pairing_window_has_requested_title_without_child_name() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    assert window.windowTitle() == "Подключение устройства"
+
+    window.close()
+
+
+def test_pairing_window_has_requested_heading_without_child_name() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    headings = [
+        widget.text()
+        for widget in window.findChildren(QLabel)
+        if widget.objectName() == "title"
+    ]
+
+    assert headings == ["Подключение устройства"]
+
+    window.close()
+
+
+def test_pairing_window_has_requested_instructions() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+
+    instructions = [
+        widget.text()
+        for widget in window.findChildren(QLabel)
+        if "Установите приложение" in widget.text()
+    ]
+
+    assert instructions == [
+        "1. Установите приложение «Семейный маяк» на устройство\n"
+        "2. Введите код сопряжения или отсканируйте QR-код:"
+    ]
+
+    window.close()
