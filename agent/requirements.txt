@@ -1,1 +1,2 @@
-# Device Agent 0.1.0 intentionally has no third-party runtime dependencies.
+# Device Agent
+PySide6>=6.8,<7
