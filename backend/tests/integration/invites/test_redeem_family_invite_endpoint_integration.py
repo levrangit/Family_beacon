@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+import pytest
 from starlette.testclient import TestClient
 
 from app.auth import get_current_user
