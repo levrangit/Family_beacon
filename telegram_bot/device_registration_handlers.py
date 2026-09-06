@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+from typing import Any
+
+from telethon import events
+
+from telegram_bot.backend_client import BackendClient
+from telegram_bot.child_menu import CHILD_DEVICES_BUTTONS, format_child_device_registration
+from telegram_bot.device_registration import registration_result
+from telegram_bot.registration import RegistrationSession
+
+
+def _status_from_response(payload: dict[str, Any]) -> str:
+    return str(payload.get("status") or "unknown").lower()
+
+
+async def handle_device_registration_action(
+    event: events.CallbackQuery.Event,
+    backend: BackendClient,
+    registration_sessions: dict[int, RegistrationSession],
+) -> None:
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+
+    data = event.data or b""
+    if data == b"child:devices_menu":
+        await event.answer()
+        try:
+            dashboard = await backend.get_child_dashboard(telegram_id)
+        except Exception:
+            await event.edit("❌ Не удалось загрузить устройства.")
+            return
+
+        from telegram_bot.child_menu import format_child_devices
+
+        await event.edit(
+            format_child_devices(dashboard),
+            buttons=CHILD_DEVICES_BUTTONS,
+        )
+        return
+
+    if data != b"child:device_register":
+        return
+
+    await event.answer()
+    session = RegistrationSession(telegram_id=telegram_id)
+    session.start_device_registration()
+    registration_sessions[telegram_id] = session
+    await event.edit(format_child_device_registration())
+
+
+async def handle_device_registration_message(
+    event: events.NewMessage.Event,
+    backend: BackendClient,
+    registration_sessions: dict[int, RegistrationSession],
+) -> bool:
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return False
+
+    session = registration_sessions.get(telegram_id)
+    if session is None or session.state != "waiting_device_registration_code":
+        return False
+
+    text = (event.raw_text or "").strip()
+    if not text:
+        return True
+
+    try:
+        session.set_device_registration_code(text)
+        payload = session.complete_device_registration_code()
+        response = await backend.submit_device_registration_code(**payload)
+    except ValueError as exc:
+        await event.respond(f"❌ {exc}\n\nВведите код ещё раз.")
+        return True
+    except Exception:
+        await event.respond(
+            "❌ Не удалось проверить код регистрации.\n\n"
+            "Попробуйте ещё раз позже."
+        )
+        return True
+
+    status = _status_from_response(response)
+    if status in {"invalid", "expired", "already_used"}:
+        session.state = "waiting_device_registration_code"
+        session.device_registration_code = None
+        await event.respond(registration_result(status))
+        return True
+
+    await event.respond(registration_result(status))
+    if status in {"accepted", "waiting_parent_approval"}:
+        registration_sessions.pop(telegram_id, None)
+    elif status in {"approved", "rejected", "timeout"}:
+        registration_sessions.pop(telegram_id, None)
+    return True
