@@ -7,7 +7,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QWidget, QLabel
+from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QPushButton, QWidget
 
 from agent.device_agent.device_pairing_window import (
     DevicePairingWindow,
@@ -18,8 +18,8 @@ from agent.device_agent.ui.theme import (
     FONT_FAMILY,
     ON_SURFACE,
     OUTLINE_VARIANT,
-    PRIMARY,
     PAIRING_WINDOW_QSS,
+    PRIMARY,
     SURFACE,
 )
 
@@ -265,6 +265,15 @@ def test_pairing_window_theme_matches_shared_qss() -> None:
     window.close()
 
 
+def test_pairing_window_uses_shared_rounded_container_style() -> None:
+    _app()
+    window = DevicePairingWindow(child_name="Алексей")
+    stylesheet = window.styleSheet()
+    assert "QWidget#pairing_container" in stylesheet
+    assert "border-radius: 16px" in stylesheet
+    window.close()
+
+
 def test_pairing_window_uses_custom_frameless_window() -> None:
     _app()
     window = DevicePairingWindow(child_name="Алексей")
@@ -304,15 +313,6 @@ def test_custom_titlebar_has_window_control_buttons() -> None:
     assert window.findChild(QPushButton, "titlebar_minimize") is not None
     assert window.findChild(QPushButton, "titlebar_maximize") is not None
     assert window.findChild(QPushButton, "titlebar_close") is not None
-    window.close()
-
-
-def test_custom_titlebar_has_family_beacon_rounded_container() -> None:
-    _app()
-    window = DevicePairingWindow(child_name="Алексей")
-    container = window.findChild(QWidget, "pairing_container")
-    assert container is not None
-    assert "border-radius" in container.styleSheet()
     window.close()
 
 
