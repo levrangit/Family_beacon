@@ -9,6 +9,7 @@ from typing import Callable
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
+from ..ui.theme import apply_family_beacon_theme
 from .menu import build_tray_menu
 
 TRAY_ICON_PATH = Path(__file__).resolve().parent / "assets" / "family_beacon.svg"
@@ -51,6 +52,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Family Beacon Device Agent")
     app.setQuitOnLastWindowClosed(False)
+    apply_family_beacon_theme(app)
     tray = DeviceAgentTray(app)
     tray.show()
     return app.exec()
