@@ -8,8 +8,10 @@ This component is a UI implementation based on the existing Family Beacon web
 `AddDeviceModal` visual design. It is intentionally decoupled from Supabase,
 Telegram, and the backend registration flow.
 
-The pairing code is supplied to `show_pairing()` or `open_device_pairing_window()`
-by the Agent; no real or fixed code is generated in this UI.
+The device platform is determined by the Agent, so the user does not select an
+operating system in this window. The pairing code is supplied to
+`show_pairing()` or `open_device_pairing_window()` by the Agent; no real or fixed
+code is generated in this UI.
 
 ## Integration contract
 
@@ -24,6 +26,6 @@ open_device_pairing_window(
 )
 ```
 
-`handle_pairing_complete(platform, device_name, pairing_code)` is the integration
-point for the future registration-request flow. The UI itself does not create a
+`handle_pairing_complete(device_name, pairing_code)` is the integration point
+for the future registration-request flow. The UI itself does not create a
 Supabase `devices` record and does not authenticate a device.
