@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from .ui.theme import PAIRING_WINDOW_QSS
 from .ui.titlebar import TitleBar
@@ -157,3 +157,17 @@ def open_device_pairing_window(
     window.raise_()
     window.activateWindow()
     return window
+
+
+def main() -> int:
+    """Run the pairing window as a standalone visual preview."""
+    app = QApplication.instance() or QApplication()
+    window = DevicePairingWindow(child_name="Ребёнок", pairing_code="123-456")
+    window.show()
+    window.raise_()
+    window.activateWindow()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
