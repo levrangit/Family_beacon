@@ -6,8 +6,27 @@ from telethon import events
 
 from telegram_bot.backend_client import BackendClient
 from telegram_bot.child_menu import CHILD_DEVICES_BUTTONS, format_child_device_registration
-from telegram_bot.device_registration import registration_result
 from telegram_bot.registration import RegistrationSession
+
+
+DEVICE_REGISTRATION_STATUSES = {
+    "accepted": "✅ Код принят.\n\nРегистрация ожидает подтверждения родителя.",
+    "waiting_parent_approval": "⏳ Регистрация ожидает подтверждения родителя.",
+    "approved": "✅ Регистрация устройства одобрена родителем.",
+    "rejected": "❌ Регистрация устройства отклонена родителем.",
+    "timeout": "⌛ Регистрация завершилась: родитель не подтвердил её в течение 10 минут.",
+    "invalid": "❌ Код регистрации неверен.",
+    "expired": "⌛ Код регистрации просрочен.",
+    "already_used": "❌ Этот код регистрации уже использован.",
+}
+
+
+def registration_result(status: str) -> str:
+    """Return user-facing text for a device registration status."""
+    return DEVICE_REGISTRATION_STATUSES.get(
+        status,
+        "⚠️ Не удалось определить состояние регистрации устройства.",
+    )
 
 
 def _status_from_response(payload: dict[str, Any]) -> str:
