@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from telegram_bot.device_registration_handlers import (
+    handle_device_registration_action,
+    handle_device_registration_message,
+)
+
 from telethon import TelegramClient, events
 
 from telegram_bot.backend_client import BackendClient
@@ -17,6 +22,7 @@ from telegram_bot.handlers.start import (
     handle_registration_message,
     handle_role,
     handle_start,
+    registration_sessions,
 )
 
 
@@ -32,6 +38,8 @@ async def start_handler(event: events.NewMessage.Event) -> None:
 @client.on(events.NewMessage())
 async def registration_message_handler(event: events.NewMessage.Event) -> None:
     if event.raw_text and event.raw_text.startswith("/"):
+        return
+    if await handle_device_registration_message(event, backend, registration_sessions):
         return
     await handle_registration_message(event, backend)
 
@@ -49,6 +57,11 @@ async def child_role_handler(event: events.CallbackQuery.Event) -> None:
 @client.on(events.CallbackQuery(pattern=r"^parent:"))
 async def parent_action_handler(event: events.CallbackQuery.Event) -> None:
     await handle_parent_action(event, backend)
+
+
+@client.on(events.CallbackQuery(pattern=r"^child:device_(?:register)$|^child:devices_menu$"))
+async def child_device_registration_action_handler(event: events.CallbackQuery.Event) -> None:
+    await handle_device_registration_action(event, backend, registration_sessions)
 
 
 @client.on(events.CallbackQuery(pattern=r"^child:"))
