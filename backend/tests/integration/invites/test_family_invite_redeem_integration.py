@@ -1,11 +1,9 @@
 import os
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
-from supabase import create_client
 
 from app.family_invites import create_family_invite, redeem_family_invite
 
@@ -14,7 +12,6 @@ load_dotenv(Path(".env"))
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
-FAMILY_ID = "a0b728c8-ff11-43f1-ad73-c184ec6926d6"
 
 
 @pytest.fixture
@@ -24,12 +21,13 @@ def supabase_client(parent_supabase_client):
 
 def test_redeem_family_invite_integration(
     parent_supabase_client,
+    parent_family_id,
     invite_redeemer_supabase_client,
     supabase_service_client,
 ):
     created = create_family_invite(
         parent_supabase_client,
-        FAMILY_ID,
+        parent_family_id,
     )
 
     try:
@@ -39,7 +37,7 @@ def test_redeem_family_invite_integration(
         )
 
         assert redeemed["invite_id"] == created["invite_id"]
-        assert redeemed["family_id"] == FAMILY_ID
+        assert redeemed["family_id"] == parent_family_id
     finally:
         supabase_service_client.table("family_invites").delete().eq(
             "id", created["invite_id"]
@@ -48,12 +46,13 @@ def test_redeem_family_invite_integration(
 
 def test_redeem_family_invite_cannot_be_used_twice(
     parent_supabase_client,
+    parent_family_id,
     invite_redeemer_supabase_client,
     supabase_service_client,
 ):
     created = create_family_invite(
         parent_supabase_client,
-        FAMILY_ID,
+        parent_family_id,
     )
 
     try:
@@ -77,11 +76,12 @@ def test_redeem_family_invite_cannot_be_used_twice(
 
 def test_redeem_expired_family_invite_is_rejected(
     supabase_client,
+    parent_family_id,
     supabase_service_client,
 ):
     created = create_family_invite(
         supabase_client,
-        FAMILY_ID,
+        parent_family_id,
     )
 
     try:
@@ -109,11 +109,12 @@ def test_redeem_expired_family_invite_is_rejected(
 
 def test_redeem_revoked_family_invite_is_rejected(
     supabase_client,
+    parent_family_id,
     supabase_service_client,
 ):
     created = create_family_invite(
         supabase_client,
-        FAMILY_ID,
+        parent_family_id,
     )
 
     try:
