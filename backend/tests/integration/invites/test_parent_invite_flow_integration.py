@@ -9,7 +9,6 @@ from app.config import SUPABASE_KEY, SUPABASE_URL
 
 
 @pytest.mark.integration
-
 def test_full_parent_invite_flow(supabase_service_client):
     """Exercise registration -> family -> invite -> transfer -> redeem through real services."""
     api_url = os.getenv("FAMILY_BEACON_API_URL", "http://127.0.0.1:8000")
@@ -18,13 +17,13 @@ def test_full_parent_invite_flow(supabase_service_client):
     second_parent_password = os.getenv("TEST_SECOND_PARENT_PASSWORD")
 
     if not first_parent_email or not first_parent_password or not second_parent_password:
-        pytest.skip(
-            "Set TEST_PARENT_EMAIL, TEST_PARENT_PASSWORD and "
-            "TEST_SECOND_PARENT_PASSWORD for the real parent invite integration test"
+        pytest.fail(
+            "TEST_PARENT_EMAIL, TEST_PARENT_PASSWORD and "
+            "TEST_SECOND_PARENT_PASSWORD are required for the integration test"
         )
 
     if not SUPABASE_URL or not SUPABASE_KEY:
-        pytest.skip("Supabase configuration is required for the real integration test")
+        pytest.fail("Supabase configuration is required for the integration test")
 
     first_client = create_client(SUPABASE_URL, SUPABASE_KEY)
     first_auth = first_client.auth.sign_in_with_password(
@@ -39,6 +38,7 @@ def test_full_parent_invite_flow(supabase_service_client):
     family_id = None
     invite_id = None
     second_parent_user_id = None
+    second_api = None
 
     family_name = f"integration-family-{uuid.uuid4()}"
     try:
@@ -108,4 +108,7 @@ def test_full_parent_invite_flow(supabase_service_client):
             ).execute()
         if second_parent_user_id is not None:
             supabase_service_client.auth.admin.delete_user(second_parent_user_id)
+        if second_api is not None:
+            second_api.close()
         api.close()
+        first_client.close()
