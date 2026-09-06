@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
@@ -24,7 +23,7 @@ class DeviceAgentTray:
     def __init__(self, app: QApplication, *, on_register: Callable[[], None] | None = None) -> None:
         self._app = app
         self._pairing_window: DevicePairingWindow | None = None
-        self._on_register = on_register or self._registration_placeholder
+        self._on_register = on_register or self._open_pairing_window
         self.tray = QSystemTrayIcon(app)
         self.tray.setToolTip("Family Beacon — Device Agent")
         self.tray.setIcon(QIcon(str(TRAY_ICON_PATH)))
@@ -38,7 +37,7 @@ class DeviceAgentTray:
             raise RuntimeError("System tray is not available on this system")
         self.tray.show()
 
-    def _registration_placeholder(self) -> None:
+    def _open_pairing_window(self) -> None:
         """Open the local pairing window without contacting the backend."""
         if self._pairing_window is not None:
             if self._pairing_window.isVisible():
@@ -51,11 +50,9 @@ class DeviceAgentTray:
             child_name="Ребёнок",
             on_cancel=self._release_pairing_window,
         )
-        self._pairing_window.finished.connect(
-            lambda _result: QTimer.singleShot(0, self._release_pairing_window)
-        )
+        self._pairing_window.finished.connect(self._release_pairing_window)
 
-    def _release_pairing_window(self) -> None:
+    def _release_pairing_window(self, _result: int | None = None) -> None:
         """Forget the pairing window after it has been closed."""
         self._pairing_window = None
 
