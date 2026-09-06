@@ -23,7 +23,7 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
         pytest.skip("set RUN_REAL_E2E=1 to run the real Supabase E2E flow")
 
     if not os.getenv("SUPABASE_URL") or not os.getenv("SUPABASE_KEY"):
-        pytest.skip("SUPABASE_URL and SUPABASE_KEY are required")
+        pytest.fail("Required Supabase test configuration is missing")
 
     suffix = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
     parent1_email = f"e2e-parent1-{suffix}@example.com"
