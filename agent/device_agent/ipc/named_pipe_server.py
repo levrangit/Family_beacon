@@ -69,4 +69,7 @@ class NamedPipeIPCServer:
         except (EOFError, OSError, UnicodeDecodeError, ValueError, TypeError):
             response = {"ok": False}
 
-        connection.send_bytes(encode_message(response))
+        try:
+            connection.send_bytes(encode_message(response))
+        except (BrokenPipeError, EOFError, OSError):
+            pass
