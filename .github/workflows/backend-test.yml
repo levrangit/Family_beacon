@@ -55,9 +55,11 @@ jobs:
           export TEST_PARENT_EMAIL="pytest-ci-parent-$(python -c 'import uuid; print(uuid.uuid4().hex)')@example.com"
           export TEST_PARENT_PASSWORD="Ci-Test-$(python -c 'import uuid; print(uuid.uuid4().hex)')-Aa1!"
           export TEST_SECOND_PARENT_PASSWORD="Ci-Test-$(python -c 'import uuid; print(uuid.uuid4().hex)')-Bb2!"
+          export TELEGRAM_BOT_SHARED_SECRET="ci-telegram-$(python -c 'import uuid; print(uuid.uuid4().hex)')"
 
           echo "::add-mask::$TEST_PARENT_PASSWORD"
           echo "::add-mask::$TEST_SECOND_PARENT_PASSWORD"
+          echo "::add-mask::$TELEGRAM_BOT_SHARED_SECRET"
 
           RESPONSE=$(curl --fail --silent --show-error \
             -X POST "$SUPABASE_URL/auth/v1/admin/users" \
@@ -73,6 +75,7 @@ jobs:
           echo "TEST_PARENT_PASSWORD=$TEST_PARENT_PASSWORD" >> "$GITHUB_ENV"
           echo "TEST_SECOND_PARENT_PASSWORD=$TEST_SECOND_PARENT_PASSWORD" >> "$GITHUB_ENV"
           echo "TEST_PARENT_USER_ID=$TEST_PARENT_USER_ID" >> "$GITHUB_ENV"
+          echo "TELEGRAM_BOT_SHARED_SECRET=$TELEGRAM_BOT_SHARED_SECRET" >> "$GITHUB_ENV"
 
       - name: Start backend
         working-directory: backend
