@@ -23,6 +23,7 @@ from telegram_bot.handlers.start import (
     handle_start,
     registration_sessions,
 )
+from telegram_bot.version import get_project_version
 
 
 class FakeMessageEvent:
