@@ -1,4 +1,4 @@
-from device_agent.config import AgentConfig, load_config
+from agent.device_agent.config import AgentConfig, load_config
 
 
 def test_load_config_returns_mvp_defaults() -> None:
