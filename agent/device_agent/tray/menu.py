@@ -6,17 +6,17 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu
 
 
-def build_tray_menu(on_register, on_quit) -> QMenu:
-    """Build the minimal Tray context menu.
-
-    Stage A keeps actions local. Registration will be connected to the real
-    pairing flow in a later stage.
-    """
+def build_tray_menu(on_register, on_restart, on_quit) -> QMenu:
+    """Build the Device Agent Tray context menu."""
     menu = QMenu()
 
     register_action = QAction("Регистрация", menu)
     register_action.triggered.connect(on_register)
     menu.addAction(register_action)
+
+    restart_action = QAction("Перезапуск", menu)
+    restart_action.triggered.connect(on_restart)
+    menu.addAction(restart_action)
 
     menu.addSeparator()
 
