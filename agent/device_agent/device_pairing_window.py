@@ -38,7 +38,7 @@ class DevicePairingWindow(QDialog):
         self._on_cancel = on_cancel
         self._pairing_code = pairing_code
 
-        self.setWindowTitle(f"Подключение устройства для {child_name}")
+        self.setWindowTitle("Подключение устройства")
         self.setModal(True)
         self.setFixedSize(460, 430)
 
@@ -65,13 +65,13 @@ class DevicePairingWindow(QDialog):
         root.setContentsMargins(28, 24, 28, 24)
         root.setSpacing(14)
 
-        title = QLabel(f"Подключение устройства для {child_name}")
+        title = QLabel("Подключение устройства")
         title.setObjectName("title")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(title)
 
         instructions = QLabel(
-            "1. Установите приложение «Семейный маяк» на устройство ребенка.\n"
+            "1. Установите приложение «Семейный маяк» на устройство\n"
             "2. Введите код сопряжения или отсканируйте QR-код:"
         )
         instructions.setWordWrap(True)
