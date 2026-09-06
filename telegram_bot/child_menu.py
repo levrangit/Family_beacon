@@ -14,6 +14,11 @@ CHILD_MENU_BUTTONS = [
     [Button.inline("💻 Устройства", b"child:devices")],
 ]
 
+CHILD_DEVICES_BUTTONS = [
+    [Button.inline("➕ Зарегистрировать устройство", b"child:device_register")],
+    [Button.inline("◀️ Назад", b"child:menu")],
+]
+
 CHILD_BACK_BUTTON = [[Button.inline("◀️ Назад", b"child:menu")]]
 
 
@@ -67,3 +72,12 @@ def format_child_devices(dashboard: dict[str, Any]) -> str:
         lines.append(f"• {name} — {status} ({platform})")
 
     return "\n".join(lines)
+
+
+def format_child_device_registration() -> str:
+    return (
+        "💻 Регистрация устройства\n\n"
+        "Введите временный код, который показан в приложении Family Beacon "
+        "на компьютере ребёнка.\n\n"
+        "Код действует ограниченное время и предназначен только для этой регистрации."
+    )
