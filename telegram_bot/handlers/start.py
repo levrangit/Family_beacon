@@ -32,7 +32,10 @@ PARENT_MENU_BUTTONS = [
     [Button.inline("👤 Профиль", b"parent:profile")],
     [Button.inline("👶 Дети", b"parent:children")],
     [Button.inline("📨 Приглашения", b"parent:invites")],
+]
+PROFILE_BUTTONS = [
     [Button.inline("🗑 Забыть меня", b"parent:forget")],
+    [Button.inline("◀️ Назад", b"parent:menu")],
 ]
 BACK_BUTTON = [[Button.inline("◀️ Назад", b"parent:menu")]]
 FAMILY_RENAME_BUTTONS = [[Button.inline("◀️ Отмена", b"parent:family:rename:cancel")]]
@@ -231,7 +234,7 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
         email = profile.get("email") or "—"
         status = "активен" if profile.get("is_active") else "неактивен"
         text = "👤 Профиль\n\n" f"Логин: {email}\n" f"Роль: {profile.get('role', '—')}\n" f"Статус: {status}"
-        await event.edit(text, buttons=BACK_BUTTON)
+        await event.edit(text, buttons=PROFILE_BUTTONS)
         return
     if data == b"parent:children":
         try:
