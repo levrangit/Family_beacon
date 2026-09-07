@@ -15,6 +15,7 @@ from telegram_bot.handlers.start import (
     CHILD_SUCCESS_TEXT,
     PARENT_MENU_BUTTONS,
     PARENT_MENU_TEXT,
+    PROFILE_BUTTONS,
     PARENT_SUCCESS_TEXT,
     handle_child_action,
     handle_parent_action,
@@ -160,7 +161,6 @@ def test_registered_parent_start_shows_all_parent_actions():
         "👤 Профиль",
         "👶 Дети",
         "📨 Приглашения",
-        "🗑 Забыть меня",
     ]
     assert buttons == PARENT_MENU_BUTTONS
 
@@ -252,12 +252,17 @@ def test_profile_action_returns_profile_information():
     asyncio.run(handle_parent_action(event, backend))
 
     assert event.answered is True
-    text, _buttons = event.edits[0]
+    text, buttons = event.edits[0]
     assert "👤 Профиль" in text
     assert "Мой профиль" not in text
     assert "parent@example.com" in text
     assert "Telegram ID:" not in text
     assert "123456" not in text
+    assert buttons == PROFILE_BUTTONS
+    assert [button.text for row in buttons for button in row] == [
+        "🗑 Забыть меня",
+        "◀️ Назад",
+    ]
 
 
 def test_invites_action_returns_codes_and_expiration():
