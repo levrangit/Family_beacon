@@ -7,7 +7,7 @@ import threading
 from multiprocessing.connection import Listener
 from typing import Any, Callable
 
-from .protocol import MAX_MESSAGE_SIZE, decode_message, encode_message
+from .protocol import IPC_AUTHKEY, MAX_MESSAGE_SIZE, decode_message, encode_message
 
 
 PIPE_ENDPOINT = r"\\.\pipe\family-beacon"
@@ -22,7 +22,7 @@ class NamedPipeIPCServer:
             raise OSError("Windows Named Pipes are available only on Windows")
         self.endpoint = PIPE_ENDPOINT
         self._handler = handler or self._default_handler
-        self._listener = Listener(self.endpoint, family="AF_PIPE")
+        self._listener = Listener(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
         self._running = False
         self._thread: threading.Thread | None = None
 
@@ -39,7 +39,6 @@ class NamedPipeIPCServer:
         if not self._running:
             self._listener.close()
             return
-
         self._running = False
         self._listener.close()
         if self._thread is not None:
@@ -52,7 +51,6 @@ class NamedPipeIPCServer:
                 connection = self._listener.accept()
             except (OSError, EOFError):
                 break
-
             try:
                 self._serve_connection(connection)
             finally:
