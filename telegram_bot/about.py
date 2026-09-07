@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from telethon import Button, events
+import os
 
-from telegram_bot.config import AUTHOR_TELEGRAM_ID
+from telethon import Button, events
 
 ABOUT_TEXT = (
     "🌟 Семейный маяк\n\n"
@@ -16,6 +16,10 @@ ABOUT_BUTTONS = [
     [Button.inline("💝 Сказать спасибо автору", b"parent:about:thanks")],
     [Button.inline("◀️ Назад", b"parent:menu")],
 ]
+
+
+def _author_telegram_id() -> int:
+    return int(os.getenv("AUTHOR_TELEGRAM_ID", "0"))
 
 
 def _thank_you_text(telegram_id: int, username: str | None) -> str:
@@ -33,13 +37,14 @@ async def handle_about_action(event: events.CallbackQuery.Event) -> None:
         await event.edit(ABOUT_TEXT, buttons=ABOUT_BUTTONS)
         return
     if data == b"parent:about:thanks":
-        if not AUTHOR_TELEGRAM_ID:
+        author_telegram_id = _author_telegram_id()
+        if not author_telegram_id:
             await event.edit("❌ Благодарность пока не настроена.", buttons=ABOUT_BUTTONS)
             return
         sender = await event.get_sender()
         username = getattr(sender, "username", None)
         await event.client.send_message(
-            AUTHOR_TELEGRAM_ID,
+            author_telegram_id,
             _thank_you_text(telegram_id, username),
         )
         await event.edit(
