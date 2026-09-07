@@ -29,13 +29,12 @@ ROLE_BUTTONS = [
 PARENT_MENU_TEXT = f"🌟 Семейный маяк · {get_project_version()}"
 PARENT_MENU_BUTTONS = [
     [Button.inline("🏠 Семья", b"parent:family")],
-    [Button.inline("👤 Профиль", b"parent:profile")],
     [Button.inline("👶 Дети", b"parent:children")],
     [Button.inline("📨 Приглашения", b"parent:invites")],
 ]
 PROFILE_BUTTONS = [
     [Button.inline("🗑 Забыть меня", b"parent:forget")],
-    [Button.inline("◀️ Назад", b"parent:menu")],
+    [Button.inline("◀️ Назад", b"parent:family")],
 ]
 BACK_BUTTON = [[Button.inline("◀️ Назад", b"parent:menu")]]
 FAMILY_RENAME_BUTTONS = [[Button.inline("◀️ Отмена", b"parent:family:rename:cancel")]]
@@ -94,6 +93,7 @@ def _parent_family_buttons(family: dict) -> list[list[Button]]:
         child_id = str(child.get("id"))
         buttons.append([Button.inline(f"👶 {name}", f"parent:family:child:{child_id}".encode())])
     buttons.append([Button.inline("➕ Выдать приглашение", b"parent:create_invite")])
+    buttons.append([Button.inline("👤 Профиль", b"parent:profile")])
     buttons.append([Button.inline("◀️ Назад", b"parent:menu")])
     return buttons
 
