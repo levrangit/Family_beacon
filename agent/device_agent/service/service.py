@@ -7,7 +7,10 @@ import win32event
 import win32service
 import win32serviceutil
 
-from .runtime import AgentRuntime
+if __package__:
+    from .runtime import AgentRuntime
+else:
+    from runtime import AgentRuntime
 
 
 class DeviceAgentService(win32serviceutil.ServiceFramework):
