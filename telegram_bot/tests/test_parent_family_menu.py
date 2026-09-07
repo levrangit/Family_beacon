@@ -3,6 +3,7 @@ import asyncio
 from telegram_bot.handlers.start import (
     FAMILY_RENAME_TEXT,
     FAMILY_RENAME_BUTTONS,
+    PROFILE_BUTTONS,
     handle_parent_action,
     handle_registration_message,
     family_rename_sessions,
@@ -58,6 +59,15 @@ class FakeBackend:
     async def get_parent_family(self, _telegram_id):
         return self.family
 
+    async def get_parent_profile(self, _telegram_id):
+        return {
+            "id": "parent-1",
+            "telegram_id": 123456,
+            "role": "parent",
+            "is_active": True,
+            "email": "parent@example.com",
+        }
+
     async def rename_parent_family(self, _telegram_id, name):
         self.family["name"] = name.strip()
         return {"id": self.family["id"], "name": self.family["name"]}
@@ -82,8 +92,10 @@ def test_family_menu_shows_children_as_buttons_and_family_name_as_button():
     assert text == "🏠 Семья"
     assert "🏠 Моя семья" in buttons[0][0].text
     assert [button.text for row in buttons[1:3] for button in row] == ["👶 Мария", "👶 Иван"]
-    assert buttons[-2][0].text == "➕ Выдать приглашение"
+    assert buttons[-3][0].text == "➕ Выдать приглашение"
+    assert buttons[-2][0].text == "👤 Профиль"
     assert buttons[-1][0].text == "◀️ Назад"
+    assert buttons[-2][0].data == b"parent:profile"
 
 
 def test_family_menu_without_children_shows_not_registered_message():
@@ -95,8 +107,28 @@ def test_family_menu_without_children_shows_not_registered_message():
 
     text, buttons = event.edits[0]
     assert text == "🏠 Семья\n\nДети не зарегистрированы."
-    assert buttons[-2][0].text == "➕ Выдать приглашение"
+    assert buttons[-3][0].text == "➕ Выдать приглашение"
+    assert buttons[-2][0].text == "👤 Профиль"
     assert buttons[-1][0].text == "◀️ Назад"
+
+
+def test_profile_from_family_menu_returns_profile_and_back_to_family():
+    event = FakeCallbackEvent(123456, b"parent:profile")
+    backend = FakeBackend()
+
+    asyncio.run(handle_parent_action(event, backend))
+
+    text, buttons = event.edits[0]
+    assert text == (
+        "👤 Профиль\n\n"
+        "Логин: parent@example.com\n"
+        "Роль: parent\n"
+        "Статус: активен"
+    )
+    assert buttons == PROFILE_BUTTONS
+    assert buttons[0][0].text == "🗑 Забыть меня"
+    assert buttons[1][0].text == "◀️ Назад"
+    assert buttons[1][0].data == b"parent:family"
 
 
 def test_family_name_button_opens_rename_prompt():
