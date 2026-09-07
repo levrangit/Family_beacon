@@ -57,15 +57,23 @@ class NamedPipeIPCServer:
                 connection.close()
 
     def _serve_connection(self, connection: Any) -> None:
-        response = self._read_request(connection)
-        self._send_response(connection, response)
+        """Serve requests until the client closes the connection."""
+        while self._running:
+            response = self._read_request(connection)
+            if response is None:
+                break
+            self._send_response(connection, response)
 
-    def _read_request(self, connection: Any) -> dict[str, Any]:
+    def _read_request(self, connection: Any) -> dict[str, Any] | None:
         try:
             data = connection.recv_bytes(MAX_MESSAGE_SIZE)
+        except (EOFError, OSError):
+            return None
+
+        try:
             request = decode_message(data)
             return self._handler(request)
-        except (EOFError, OSError, UnicodeDecodeError, ValueError, TypeError) as exc:
+        except (UnicodeDecodeError, ValueError, TypeError) as exc:
             return {"ok": False, "error": str(exc)}
 
     @staticmethod
