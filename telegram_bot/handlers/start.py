@@ -5,6 +5,7 @@ from datetime import datetime
 from telethon import Button, events
 from telethon.errors import MessageNotModifiedError
 
+from telegram_bot.about import ABOUT_BUTTONS, ABOUT_TEXT, handle_about_action
 from telegram_bot.backend_client import BackendClient
 from telegram_bot.child_menu import (
     CHILD_BACK_BUTTON,
@@ -31,6 +32,7 @@ PARENT_MENU_BUTTONS = [
     [Button.inline("🏠 Семья", b"parent:family")],
     [Button.inline("👶 Дети", b"parent:children")],
     [Button.inline("📨 Приглашения", b"parent:invites")],
+    [Button.inline("ℹ️ О программе", b"parent:about")],
 ]
 PROFILE_BUTTONS = [
     [Button.inline("🗑 Забыть меня", b"parent:forget")],
@@ -158,6 +160,9 @@ async def handle_parent_action(event: events.CallbackQuery.Event, backend: Backe
     data = event.data or b""
     if data == b"parent:menu":
         await event.edit(PARENT_MENU_TEXT, buttons=PARENT_MENU_BUTTONS)
+        return
+    if data in (b"parent:about", b"parent:about:thanks"):
+        await handle_about_action(event)
         return
     if data == b"parent:family":
         try:
