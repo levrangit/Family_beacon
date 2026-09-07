@@ -158,7 +158,6 @@ def test_registered_parent_start_shows_all_parent_actions():
     labels = [button.text for row in buttons for button in row]
     assert labels == [
         "🏠 Семья",
-        "👤 Профиль",
         "👶 Дети",
         "📨 Приглашения",
     ]
@@ -245,7 +244,7 @@ def test_child_devices_action_returns_devices():
     assert "онлайн" in text
 
 
-def test_profile_action_returns_profile_information():
+def test_profile_action_returns_profile_information_from_family_menu():
     event = FakeCallbackEvent(123456, b"parent:profile")
     backend = FakeBackend()
 
@@ -263,6 +262,7 @@ def test_profile_action_returns_profile_information():
         "🗑 Забыть меня",
         "◀️ Назад",
     ]
+    assert buttons[-1][0].data == b"parent:family"
 
 
 def test_invites_action_returns_codes_and_expiration():
