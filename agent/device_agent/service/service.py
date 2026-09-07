@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import servicemanager
 import win32event
 import win32service
 import win32serviceutil
 
+
 if __package__:
     from .runtime import AgentRuntime
 else:
-    from runtime import AgentRuntime
+    # pythonservice.exe loads this module as a standalone script, so there is
+    # no package context for relative imports. Add the project root and use
+    # the full package path so runtime.py can keep its relative imports.
+    project_root = Path(__file__).resolve().parents[3]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from agent.device_agent.service.runtime import AgentRuntime
 
 
 class DeviceAgentService(win32serviceutil.ServiceFramework):
