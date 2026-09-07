@@ -160,6 +160,7 @@ def test_registered_parent_start_shows_all_parent_actions():
         "🏠 Семья",
         "👶 Дети",
         "📨 Приглашения",
+        "ℹ️ О программе",
     ]
     assert buttons == PARENT_MENU_BUTTONS
 
@@ -186,6 +187,21 @@ def test_registered_child_start_shows_child_menu():
         button.text for row in CHILD_MENU_BUTTONS for button in row
     ]
     assert "🔄 Обновить" not in text
+
+
+def test_about_action_shows_description_and_buttons():
+    event = FakeCallbackEvent(123456, b"parent:about")
+    backend = FakeBackend()
+
+    asyncio.run(handle_parent_action(event, backend))
+
+    text, buttons = event.edits[0]
+    assert "🌟 Семейный маяк" in text
+    assert "цифровой безопасности детей" in text
+    assert [button.text for row in buttons for button in row] == [
+        "💝 Сказать спасибо автору",
+        "◀️ Назад",
+    ]
 
 
 def test_child_menu_loads_dashboard_without_refresh_button():
