@@ -7,7 +7,7 @@ from multiprocessing.connection import Client
 from typing import Any
 
 from .named_pipe_server import PIPE_ENDPOINT
-from .protocol import MAX_MESSAGE_SIZE, decode_message, encode_message
+from .protocol import IPC_AUTHKEY, MAX_MESSAGE_SIZE, decode_message, encode_message
 
 
 class NamedPipeIPCClient:
@@ -26,7 +26,7 @@ class NamedPipeIPCClient:
         if self.endpoint != PIPE_ENDPOINT:
             raise ConnectionError("Unsupported Named Pipe endpoint")
         try:
-            self._connection = Client(self.endpoint, family="AF_PIPE")
+            self._connection = Client(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
         except (OSError, EOFError, ConnectionError) as exc:
             raise ConnectionError("Device Agent Service is unavailable") from exc
         return True
