@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 MAX_MESSAGE_SIZE = 64 * 1024
+IPC_AUTHKEY = b"family-beacon-ipc-v1"
 
 STATUS = "status"
 REGISTRATION_START = "registration.start"
