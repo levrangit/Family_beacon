@@ -6,25 +6,25 @@ import os
 from multiprocessing.connection import Client
 from typing import Any
 
-from .named_pipe_server import PIPE_PREFIX
+from .named_pipe_server import PIPE_ENDPOINT
 from .protocol import MAX_MESSAGE_SIZE, decode_message, encode_message
 
 
 class NamedPipeIPCClient:
-    """Request/response client backed by a Windows Named Pipe."""
+    """Request/response client backed by the Device Agent Service pipe."""
 
     requires_backend = False
     requires_supabase = False
 
-    def __init__(self, endpoint: str = PIPE_PREFIX) -> None:
+    def __init__(self, endpoint: str = PIPE_ENDPOINT) -> None:
         self.endpoint = endpoint
         self._connection = None
 
     def connect(self) -> bool:
         """Connect to the local Device Agent Service Named Pipe."""
         self._ensure_windows()
-        self._ensure_supported_endpoint()
-
+        if self.endpoint != PIPE_ENDPOINT:
+            raise ConnectionError("Unsupported Named Pipe endpoint")
         try:
             self._connection = Client(self.endpoint, family="AF_PIPE")
         except (OSError, EOFError, ConnectionError) as exc:
@@ -41,13 +41,11 @@ class NamedPipeIPCClient:
     def request(self, message: dict[str, Any]) -> dict[str, Any]:
         """Send one request and return one response."""
         connection = self._require_connection()
-
         try:
             connection.send_bytes(encode_message(message))
             data = connection.recv_bytes(MAX_MESSAGE_SIZE)
         except (OSError, EOFError, ConnectionError) as exc:
             raise ConnectionError("IPC request failed") from exc
-
         try:
             return decode_message(data)
         except (UnicodeDecodeError, ValueError, TypeError) as exc:
@@ -57,10 +55,6 @@ class NamedPipeIPCClient:
     def _ensure_windows() -> None:
         if os.name != "nt":
             raise ConnectionError("Windows Named Pipes are available only on Windows")
-
-    def _ensure_supported_endpoint(self) -> None:
-        if not self.endpoint.startswith(PIPE_PREFIX):
-            raise ConnectionError("Unsupported Named Pipe endpoint")
 
     def _require_connection(self) -> Any:
         if self._connection is None:
