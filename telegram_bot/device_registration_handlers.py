@@ -15,6 +15,7 @@ from telegram_bot.registration import RegistrationSession
 
 
 DEVICE_REGISTRATION_STATUSES = {
+    "code_submitted": "✅ Код принят.\n\nРегистрация ожидает подтверждения родителя.",
     "accepted": "✅ Код принят.\n\nРегистрация ожидает подтверждения родителя.",
     "waiting_parent_approval": "⏳ Регистрация ожидает подтверждения родителя.",
     "approved": "✅ Регистрация устройства одобрена родителем.",
@@ -22,7 +23,7 @@ DEVICE_REGISTRATION_STATUSES = {
     "timeout": "⌛ Регистрация завершилась: родитель не подтвердил её в течение 10 минут.",
     "invalid": "❌ Код регистрации неверен.",
     "expired": "⌛ Код регистрации просрочен.",
-    "already_used": "❌ Этот код регистрации уже использован.",
+    "already_used": "❌ Этот код регистрации уже использован.\n\nПолучите новый код на компьютере.",
 }
 
 
@@ -135,6 +136,6 @@ async def handle_device_registration_message(
         return True
 
     await event.respond(registration_result(status))
-    if status in {"accepted", "waiting_parent_approval", "approved", "rejected", "timeout"}:
+    if status in {"code_submitted", "accepted", "waiting_parent_approval", "approved", "rejected", "timeout"}:
         registration_sessions.pop(telegram_id, None)
     return True
