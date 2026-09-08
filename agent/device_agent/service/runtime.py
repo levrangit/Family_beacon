@@ -117,17 +117,6 @@ class AgentRuntime:
             }
 
         if message_type == REGISTRATION_CANCEL:
-            active_request = self.registration.request
-            if active_request is not None:
-                try:
-                    self.backend.cancel_device_registration_request(active_request.request_id)
-                except BackendClientError as exc:
-                    self.logger.warning("Device registration cancel failed: %s", exc)
-                    return {
-                        "ok": False,
-                        "type": REGISTRATION_CANCEL,
-                        "error": "registration_backend_unavailable",
-                    }
             self.registration.cancel()
             return {"ok": True, "type": REGISTRATION_CANCEL}
 
