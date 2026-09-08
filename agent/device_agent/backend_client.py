@@ -16,6 +16,28 @@ class BackendClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
+    def bootstrap_agent_installation(
+        self,
+        *,
+        installation_code: str,
+        agent_secret: str,
+        platform: str,
+        device_id: str,
+        hostname: str | None,
+        agent_version: str | None,
+    ) -> dict:
+        return self._post(
+            "/agent/installations/bootstrap",
+            {
+                "installation_code": installation_code,
+                "agent_secret": agent_secret,
+                "platform": platform,
+                "device_id": device_id,
+                "hostname": hostname,
+                "agent_version": agent_version,
+            },
+        )
+
     def create_device_registration_request(
         self,
         *,
