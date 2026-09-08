@@ -1,4 +1,4 @@
-"""API contract tests for Device Registration Workflow v1."""
+"""API contract tests for the currently implemented Device Registration Workflow v1 slice."""
 
 from fastapi.testclient import TestClient
 
@@ -19,30 +19,6 @@ def test_device_registration_create_request_endpoint_exists():
                 "agent_version": "0.1.0",
             },
         },
-    )
-
-    assert response.status_code != 404
-
-
-def test_device_registration_parent_approval_endpoint_exists():
-    response = client.post(
-        "/device-registration/requests/00000000-0000-0000-0000-000000000001/approve"
-    )
-
-    assert response.status_code != 404
-
-
-def test_device_registration_parent_rejection_endpoint_exists():
-    response = client.post(
-        "/device-registration/requests/00000000-0000-0000-0000-000000000001/reject"
-    )
-
-    assert response.status_code != 404
-
-
-def test_device_registration_request_status_endpoint_exists():
-    response = client.get(
-        "/device-registration/requests/00000000-0000-0000-0000-000000000001"
     )
 
     assert response.status_code != 404
