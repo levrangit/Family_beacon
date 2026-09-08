@@ -52,3 +52,16 @@ def test_device_registration_request_status_endpoint_exists():
     )
 
     assert response.status_code != 404
+
+
+
+def test_device_registration_submit_code_endpoint_exists():
+    response = client.post(
+        "/device-registration/submit-code",
+        json={
+            "telegram_id": 123456789,
+            "registration_code": "ABC123",
+        },
+    )
+
+    assert response.status_code != 404
