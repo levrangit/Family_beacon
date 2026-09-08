@@ -12,7 +12,6 @@ def test_device_registration_create_request_endpoint_exists():
     response = client.post(
         "/device-registration/requests",
         json={
-            "child_id": "00000000-0000-0000-0000-000000000001",
             "device": {
                 "platform": "windows",
                 "device_id": "device-test-001",
