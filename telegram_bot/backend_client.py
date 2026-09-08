@@ -80,16 +80,23 @@ class BackendClient:
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
-                f"{self.base_url}/telegram/child/device-registration",
+                f"{self.base_url}/device-registration/submit-code",
                 json=payload,
-                headers=self._headers(),
             )
 
-        if response.status_code in {400, 409, 410}:
+        if response.status_code in {400, 404, 409, 410}:
             try:
-                return response.json()
+                body = response.json()
             except ValueError:
+                body = {}
+
+            if response.status_code == 404:
                 return {"status": "invalid"}
+            if response.status_code == 410:
+                return {"status": "expired"}
+            if response.status_code == 409:
+                return {"status": "already_used"}
+            return {"status": str(body.get("status") or "invalid")}
 
         response.raise_for_status()
         return response.json()
