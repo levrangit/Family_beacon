@@ -1,24 +1,14 @@
-"""Registration request primitives for the Device Agent.
-
-This module owns the local Agent-side registration lifecycle only. The
-persistent Registration Request and its authoritative temporary code will be
-moved behind a Backend client when the backend contract is implemented.
-"""
+"""Registration request state for the Device Agent."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-import secrets
-import string
-
-
-_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+from datetime import datetime, timezone
 
 
 @dataclass(frozen=True)
 class RegistrationRequest:
-    """Temporary local representation of a registration attempt."""
+    """Backend-issued registration request held locally by the Agent."""
 
     request_id: str
     registration_code: str
@@ -31,17 +21,14 @@ class RegistrationRequest:
 
 
 class RegistrationCoordinator:
-    """Create and track one temporary registration attempt per Agent."""
+    """Track the single Backend-authoritative registration attempt for an Agent."""
 
-    def __init__(self, *, ttl_minutes: int = 10) -> None:
-        if ttl_minutes <= 0:
-            raise ValueError("ttl_minutes must be positive")
-        self._ttl = timedelta(minutes=ttl_minutes)
+    def __init__(self) -> None:
         self._request: RegistrationRequest | None = None
 
     @property
     def request(self) -> RegistrationRequest | None:
-        """Return the active request, if any and not expired."""
+        """Return the active Backend-issued request, if it has not expired."""
         request = self._request
         if request is None:
             return None
@@ -50,22 +37,31 @@ class RegistrationCoordinator:
             return None
         return request
 
-    def start(self) -> RegistrationRequest:
-        """Start a new temporary registration attempt."""
-        now = datetime.now(timezone.utc)
+    def set_request(
+        self,
+        *,
+        request_id: str,
+        registration_code: str,
+        expires_at: datetime,
+        created_at: datetime | None = None,
+    ) -> RegistrationRequest:
+        """Store a registration request returned by the Backend."""
+        if not request_id:
+            raise ValueError("request_id is required")
+        if not registration_code:
+            raise ValueError("registration_code is required")
+        if expires_at.tzinfo is None:
+            raise ValueError("expires_at must be timezone-aware")
+
         request = RegistrationRequest(
-            request_id=secrets.token_urlsafe(18),
-            registration_code=self._generate_code(),
-            created_at=now,
-            expires_at=now + self._ttl,
+            request_id=request_id,
+            registration_code=registration_code,
+            created_at=created_at or datetime.now(timezone.utc),
+            expires_at=expires_at,
         )
         self._request = request
         return request
 
     def cancel(self) -> None:
-        """Cancel the active local registration attempt."""
+        """Forget the local registration request."""
         self._request = None
-
-    @staticmethod
-    def _generate_code(length: int = 6) -> str:
-        return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(length))
