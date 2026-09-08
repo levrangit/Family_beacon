@@ -24,7 +24,6 @@ class DeviceRegistrationDevice(BaseModel):
 class CreateDeviceRegistrationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    child_id: str
     device: DeviceRegistrationDevice
 
 
@@ -33,6 +32,12 @@ class SubmitDeviceRegistrationCodeRequest(BaseModel):
 
     telegram_id: int
     registration_code: str
+
+
+class CancelDeviceRegistrationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str
 
 
 def _hash_registration_code(registration_code: str) -> str:
@@ -60,7 +65,7 @@ def create_device_registration_request(
             .table("device_registration_requests")
             .insert(
                 {
-                    "child_id": data.child_id,
+                    "child_id": None,
                     "request_code_hash": code_hash,
                     "status": "pending",
                     "device_platform": data.device.platform,
@@ -140,7 +145,6 @@ def submit_device_registration_code(
             .table("device_registration_requests")
             .select("id, child_id, status, expires_at")
             .eq("request_code_hash", code_hash)
-            .eq("child_id", child_id)
             .limit(1)
             .execute()
         )
@@ -153,15 +157,10 @@ def submit_device_registration_code(
             )
 
         request = requests[0]
-        if request["status"] != "pending":
-            raise HTTPException(
-                status_code=409,
-                detail="Device registration request is not pending",
-            )
-
         expires_at = datetime.fromisoformat(
             request["expires_at"].replace("Z", "+00:00")
         )
+
         if expires_at <= now:
             (
                 client
@@ -180,11 +179,18 @@ def submit_device_registration_code(
                 detail="Device registration code has expired",
             )
 
+        if request["status"] != "pending":
+            raise HTTPException(
+                status_code=409,
+                detail="Device registration code is already used",
+            )
+
         submitted_response = (
             client
             .table("device_registration_requests")
             .update(
                 {
+                    "child_id": child_id,
                     "status": "code_submitted",
                     "code_submitted_at": now.isoformat(),
                 }
@@ -198,7 +204,7 @@ def submit_device_registration_code(
         if not submitted_requests:
             raise HTTPException(
                 status_code=409,
-                detail="Device registration request is no longer pending",
+                detail="Device registration code is already used",
             )
 
         submitted_request = submitted_requests[0]
@@ -221,4 +227,90 @@ def submit_device_registration_code(
         raise HTTPException(
             status_code=500,
             detail="Failed to submit device registration code",
+        ) from exc
+
+
+def get_device_registration_request(request_id: str):
+    if not request_id:
+        raise HTTPException(status_code=422, detail="Registration request ID is required")
+
+    try:
+        client = get_admin_client()
+        response = (
+            client
+            .table("device_registration_requests")
+            .select(
+                "id, child_id, status, device_platform, device_id, hostname, "
+                "agent_version, code_submitted_at, approved_at, rejected_at, "
+                "cancelled_at, completed_at, expires_at, created_at, updated_at"
+            )
+            .eq("id", request_id)
+            .limit(1)
+            .execute()
+        )
+
+        requests = response.data or []
+        if not requests:
+            raise HTTPException(status_code=404, detail="Device registration request not found")
+
+        return requests[0]
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if "configuration is missing" in str(exc).lower():
+            raise HTTPException(
+                status_code=503,
+                detail="Supabase configuration is missing",
+            ) from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get device registration request",
+        ) from exc
+
+
+def cancel_device_registration_request(request_id: str):
+    if not request_id:
+        raise HTTPException(status_code=422, detail="Registration request ID is required")
+
+    try:
+        client = get_admin_client()
+        now = datetime.now(timezone.utc)
+        response = (
+            client
+            .table("device_registration_requests")
+            .update(
+                {
+                    "status": "cancelled",
+                    "cancelled_at": now.isoformat(),
+                }
+            )
+            .eq("id", request_id)
+            .in_("status", ["pending", "code_submitted", "approved"])
+            .execute()
+        )
+
+        requests = response.data or []
+        if not requests:
+            current = get_device_registration_request(request_id)
+            if current["status"] in {"cancelled", "rejected", "expired", "completed"}:
+                return current
+            raise HTTPException(
+                status_code=409,
+                detail="Device registration request cannot be cancelled",
+            )
+
+        return requests[0]
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if "configuration is missing" in str(exc).lower():
+            raise HTTPException(
+                status_code=503,
+                detail="Supabase configuration is missing",
+            ) from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to cancel device registration request",
         ) from exc
