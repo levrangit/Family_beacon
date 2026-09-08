@@ -49,7 +49,9 @@ from app.telegram_child import TelegramChildService
 from app.telegram_parent import TelegramParentService
 from app.device_registration import (
     CreateDeviceRegistrationRequest,
+    SubmitDeviceRegistrationCodeRequest,
     create_device_registration_request,
+    submit_device_registration_code,
 )
 
 from app.commands import (
@@ -372,6 +374,13 @@ async def create_device_registration_request_endpoint(
     data: CreateDeviceRegistrationRequest,
 ):
     return create_device_registration_request(data)
+
+
+@app.post("/device-registration/submit-code")
+async def submit_device_registration_code_endpoint(
+    data: SubmitDeviceRegistrationCodeRequest,
+):
+    return submit_device_registration_code(data)
 
 
 @app.post("/families/{family_id}/invite")
