@@ -12,6 +12,24 @@ AGENT_INSTALLATION_BUTTONS = [
 ]
 
 
+def parent_family_buttons_with_installation(family: dict) -> list[list[Button]]:
+    buttons: list[list[Button]] = [
+        [Button.inline(f"🏠 {family.get('name') or 'Семья'}", b"parent:family:rename")]
+    ]
+    children = family.get("children") or []
+    for child in children:
+        name = child.get("name") or "Без имени"
+        child_id = str(child.get("id"))
+        buttons.append(
+            [Button.inline(f"👶 {name}", f"parent:family:child:{child_id}".encode())]
+        )
+    buttons.append([Button.inline("➕ Выдать приглашение", b"parent:create_invite")])
+    buttons.append([Button.inline("👤 Профиль", b"parent:profile")])
+    buttons.append([Button.inline("💻 Создать установку Agent", b"parent:agent_installation")])
+    buttons.append([Button.inline("◀️ Назад", b"parent:menu")])
+    return buttons
+
+
 def format_agent_installation(installation: dict) -> str:
     expires_at = str(installation.get("expires_at", "—"))
     try:
