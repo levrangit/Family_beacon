@@ -63,6 +63,7 @@ def test_device_registration_cannot_complete_without_code():
 
 
 def test_device_registration_status_messages_cover_required_states():
+    assert "Код принят" in registration_result("code_submitted")
     assert "Код принят" in registration_result("accepted")
     assert "неверен" in registration_result("invalid")
     assert "просрочен" in registration_result("expired")
@@ -70,3 +71,10 @@ def test_device_registration_status_messages_cover_required_states():
     assert "одобрена" in registration_result("approved")
     assert "отклонена" in registration_result("rejected")
     assert "10 минут" in registration_result("timeout")
+
+
+def test_device_registration_already_used_message_requests_new_code():
+    message = registration_result("already_used")
+
+    assert "уже использован" in message
+    assert "новый код" in message
