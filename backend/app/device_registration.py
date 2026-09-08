@@ -179,11 +179,33 @@ def submit_device_registration_code(
                 detail="Device registration code has expired",
             )
 
+        submitted_response = (
+            client
+            .table("device_registration_requests")
+            .update(
+                {
+                    "status": "code_submitted",
+                    "code_submitted_at": now.isoformat(),
+                }
+            )
+            .eq("id", request["id"])
+            .eq("status", "pending")
+            .execute()
+        )
+
+        submitted_requests = submitted_response.data or []
+        if not submitted_requests:
+            raise HTTPException(
+                status_code=409,
+                detail="Device registration request is no longer pending",
+            )
+
+        submitted_request = submitted_requests[0]
         return {
-            "request_id": request["id"],
-            "child_id": request["child_id"],
-            "status": request["status"],
-            "expires_at": request["expires_at"],
+            "request_id": submitted_request["id"],
+            "child_id": submitted_request["child_id"],
+            "status": submitted_request["status"],
+            "expires_at": submitted_request["expires_at"],
         }
 
     except HTTPException:
