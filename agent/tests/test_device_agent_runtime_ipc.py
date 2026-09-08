@@ -20,6 +20,14 @@ class FakeNamedPipeIPCServer:
         self.stopped = True
 
 
+class FakeIdentity:
+    platform = "windows"
+    windows_machine_guid = "machine-guid-001"
+    hostname = "WIN-TEST"
+    os_username = "tester"
+    os_session_identity = "tester\\Console"
+
+
 class FakeBackendClient:
     def __init__(self):
         self.created = []
@@ -34,11 +42,19 @@ class FakeBackendClient:
         }
 
 
-def test_runtime_starts_and_stops_ipc_server(monkeypatch) -> None:
+def _patch_runtime(monkeypatch) -> None:
     monkeypatch.setattr(
         "agent.device_agent.service.runtime.NamedPipeIPCServer",
         FakeNamedPipeIPCServer,
     )
+    monkeypatch.setattr(
+        "agent.device_agent.service.runtime.collect_identity",
+        lambda _version: FakeIdentity(),
+    )
+
+
+def test_runtime_starts_and_stops_ipc_server(monkeypatch) -> None:
+    _patch_runtime(monkeypatch)
 
     runtime = AgentRuntime(backend_client=FakeBackendClient())
     runtime.start()
@@ -52,10 +68,7 @@ def test_runtime_starts_and_stops_ipc_server(monkeypatch) -> None:
 
 
 def test_runtime_handles_status_request(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "agent.device_agent.service.runtime.NamedPipeIPCServer",
-        FakeNamedPipeIPCServer,
-    )
+    _patch_runtime(monkeypatch)
 
     runtime = AgentRuntime(backend_client=FakeBackendClient())
     response = runtime.handle_ipc_request({"type": "status"})
@@ -69,10 +82,7 @@ def test_runtime_handles_status_request(monkeypatch) -> None:
 
 
 def test_runtime_creates_backend_registration_and_cancels_local_state(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "agent.device_agent.service.runtime.NamedPipeIPCServer",
-        FakeNamedPipeIPCServer,
-    )
+    _patch_runtime(monkeypatch)
 
     backend = FakeBackendClient()
     runtime = AgentRuntime(backend_client=backend)
@@ -85,9 +95,14 @@ def test_runtime_creates_backend_registration_and_cancels_local_state(monkeypatc
         "registration_code": "ABCD-2345",
         "expires_at": "2030-01-01T00:10:00+00:00",
     }
-    assert backend.created
-    assert backend.created[0]["platform"]
-    assert backend.created[0]["device_id"]
+    assert backend.created == [
+        {
+            "platform": "windows",
+            "device_id": "machine-guid-001",
+            "hostname": "WIN-TEST",
+            "agent_version": "0.1.0",
+        }
+    ]
 
     status = runtime.handle_ipc_request({"type": "status"})
     assert status["registration_active"] is True
@@ -100,10 +115,7 @@ def test_runtime_creates_backend_registration_and_cancels_local_state(monkeypatc
 
 
 def test_runtime_reports_backend_failure(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "agent.device_agent.service.runtime.NamedPipeIPCServer",
-        FakeNamedPipeIPCServer,
-    )
+    _patch_runtime(monkeypatch)
 
     class FailingBackendClient(FakeBackendClient):
         def create_device_registration_request(self, **kwargs):
