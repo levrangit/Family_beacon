@@ -1,8 +1,4 @@
-"""RED API contract tests for Device Registration Workflow v1.
-
-These tests intentionally describe endpoints that are not implemented yet.
-They must turn green only when the Backend exposes the central workflow API.
-"""
+"""API contract tests for Device Registration Workflow v1."""
 
 from fastapi.testclient import TestClient
 
@@ -52,7 +48,6 @@ def test_device_registration_request_status_endpoint_exists():
     )
 
     assert response.status_code != 404
-
 
 
 def test_device_registration_submit_code_endpoint_exists():
