@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-import hashlib
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from app.code import generate_code, hash_code
 from app.supabase_client import get_admin_client
 
 
@@ -25,7 +25,6 @@ class CreateDeviceRegistrationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     child_id: str
-    registration_code: str
     device: DeviceRegistrationDevice
 
 
@@ -40,7 +39,7 @@ def _hash_registration_code(registration_code: str) -> str:
     normalized_code = registration_code.strip().upper()
     if not normalized_code:
         raise HTTPException(status_code=422, detail="Registration code is required")
-    return hashlib.sha256(normalized_code.encode("utf-8")).hexdigest()
+    return hash_code(normalized_code)
 
 
 def create_device_registration_request(
@@ -49,7 +48,8 @@ def create_device_registration_request(
     if data.device.platform not in {"windows", "macos", "linux"}:
         raise HTTPException(status_code=422, detail="Unsupported device platform")
 
-    code_hash = _hash_registration_code(data.registration_code)
+    registration_code = generate_code()
+    code_hash = hash_code(registration_code)
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=REGISTRATION_TTL_MINUTES)
 
@@ -82,6 +82,7 @@ def create_device_registration_request(
         request = response.data[0]
         return {
             "request_id": request["id"],
+            "registration_code": registration_code,
             "status": request["status"],
             "expires_at": request["expires_at"],
         }
