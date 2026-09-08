@@ -19,13 +19,32 @@ class FakeNamedPipeIPCServer:
         self.stopped = True
 
 
+class FakeBackendClient:
+    def __init__(self):
+        self.created = []
+        self.cancelled = []
+
+    def create_device_registration_request(self, **kwargs):
+        self.created.append(kwargs)
+        return {
+            "request_id": "request-001",
+            "registration_code": "ABCD-2345",
+            "status": "pending",
+            "expires_at": "2030-01-01T00:10:00+00:00",
+        }
+
+    def cancel_device_registration_request(self, request_id: str):
+        self.cancelled.append(request_id)
+        return {"id": request_id, "status": "cancelled"}
+
+
 def test_runtime_starts_and_stops_ipc_server(monkeypatch) -> None:
     monkeypatch.setattr(
         "agent.device_agent.service.runtime.NamedPipeIPCServer",
         FakeNamedPipeIPCServer,
     )
 
-    runtime = AgentRuntime()
+    runtime = AgentRuntime(backend_client=FakeBackendClient())
     runtime.start()
 
     assert runtime.ipc_server is not None
@@ -42,7 +61,7 @@ def test_runtime_handles_status_request(monkeypatch) -> None:
         FakeNamedPipeIPCServer,
     )
 
-    runtime = AgentRuntime()
+    runtime = AgentRuntime(backend_client=FakeBackendClient())
     response = runtime.handle_ipc_request({"type": "status"})
 
     assert response == {
@@ -53,33 +72,60 @@ def test_runtime_handles_status_request(monkeypatch) -> None:
     }
 
 
-def test_runtime_handles_local_registration_start_and_cancel(monkeypatch) -> None:
+def test_runtime_creates_backend_registration_and_cancels_it(monkeypatch) -> None:
     monkeypatch.setattr(
         "agent.device_agent.service.runtime.NamedPipeIPCServer",
         FakeNamedPipeIPCServer,
     )
 
-    runtime = AgentRuntime()
+    backend = FakeBackendClient()
+    runtime = AgentRuntime(backend_client=backend)
     started = runtime.handle_ipc_request({"type": "registration.start"})
 
-    assert started["ok"] is True
-    assert started["type"] == "registration.start"
-    assert started["request_id"]
-    assert started["registration_code"]
-    assert started["expires_at"]
+    assert started == {
+        "ok": True,
+        "type": "registration.start",
+        "request_id": "request-001",
+        "registration_code": "ABCD-2345",
+        "expires_at": "2030-01-01T00:10:00+00:00",
+    }
+    assert backend.created
+    assert backend.created[0]["platform"]
+    assert backend.created[0]["device_id"]
 
     status = runtime.handle_ipc_request({"type": "status"})
     assert status["registration_active"] is True
 
     cancelled = runtime.handle_ipc_request({"type": "registration.cancel"})
     assert cancelled == {"ok": True, "type": "registration.cancel"}
+    assert backend.cancelled == ["request-001"]
 
     status = runtime.handle_ipc_request({"type": "status"})
     assert status["registration_active"] is False
 
 
+def test_runtime_reports_backend_failure(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "agent.device_agent.service.runtime.NamedPipeIPCServer",
+        FakeNamedPipeIPCServer,
+    )
+
+    class FailingBackendClient(FakeBackendClient):
+        def create_device_registration_request(self, **kwargs):
+            raise RuntimeError("backend unavailable")
+
+    runtime = AgentRuntime(backend_client=FailingBackendClient())
+    response = runtime.handle_ipc_request({"type": "registration.start"})
+
+    assert response == {
+        "ok": False,
+        "type": "registration.start",
+        "error": "registration_backend_unavailable",
+    }
+
+
 def test_runtime_rejects_unsupported_ipc_message() -> None:
-    runtime = AgentRuntime()
+    runtime = AgentRuntime(backend_client=FakeBackendClient())
 
     assert runtime.handle_ipc_request({"type": "unknown"}) == {
         "ok": False,
