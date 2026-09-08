@@ -30,7 +30,7 @@ $$;
 CREATE TABLE IF NOT EXISTS public.device_registration_requests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    child_id uuid NOT NULL
+    child_id uuid
         REFERENCES public.children(id)
         ON DELETE CASCADE,
 
@@ -62,6 +62,18 @@ CREATE TABLE IF NOT EXISTS public.device_registration_requests (
 
     CONSTRAINT device_registration_requests_expires_after_create
         CHECK (expires_at > created_at),
+
+    CONSTRAINT device_registration_requests_pending_child_consistency
+        CHECK (
+            (status <> 'pending')
+            OR child_id IS NULL
+        ),
+
+    CONSTRAINT device_registration_requests_child_required_after_claim
+        CHECK (
+            status NOT IN ('code_submitted', 'approved', 'rejected', 'completed')
+            OR child_id IS NOT NULL
+        ),
 
     CONSTRAINT device_registration_requests_code_submitted_consistency
         CHECK (
