@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent.device_agent.backend_client import BackendClientError
 from agent.device_agent.service.runtime import AgentRuntime
 
 
@@ -112,7 +113,7 @@ def test_runtime_reports_backend_failure(monkeypatch) -> None:
 
     class FailingBackendClient(FakeBackendClient):
         def create_device_registration_request(self, **kwargs):
-            raise RuntimeError("backend unavailable")
+            raise BackendClientError("backend unavailable")
 
     runtime = AgentRuntime(backend_client=FailingBackendClient())
     response = runtime.handle_ipc_request({"type": "registration.start"})
