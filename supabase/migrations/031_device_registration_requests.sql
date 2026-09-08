@@ -3,8 +3,9 @@
 -- Migration: 031_device_registration_requests
 -- Database: Supabase PostgreSQL
 --
--- Central workflow state for Telegram Child -> Parent approval
--- -> Windows Device registration.
+-- Central workflow state for:
+-- Windows Device Agent -> Telegram Child code confirmation
+-- -> Parent approval -> Windows Device registration.
 --
 -- This migration is committed to Git only. Do not apply it to the
 -- remote Supabase project as part of this change.
@@ -14,6 +15,7 @@ DO $$
 BEGIN
     CREATE TYPE public.device_registration_status AS ENUM (
         'pending',
+        'code_submitted',
         'approved',
         'rejected',
         'cancelled',
@@ -42,6 +44,8 @@ CREATE TABLE IF NOT EXISTS public.device_registration_requests (
     hostname text,
     agent_version text,
 
+    code_submitted_at timestamptz,
+
     approved_by_parent_id uuid
         REFERENCES public.profiles(id)
         ON DELETE SET NULL,
@@ -58,6 +62,12 @@ CREATE TABLE IF NOT EXISTS public.device_registration_requests (
 
     CONSTRAINT device_registration_requests_expires_after_create
         CHECK (expires_at > created_at),
+
+    CONSTRAINT device_registration_requests_code_submitted_consistency
+        CHECK (
+            (status <> 'code_submitted')
+            OR code_submitted_at IS NOT NULL
+        ),
 
     CONSTRAINT device_registration_requests_approved_consistency
         CHECK (
@@ -134,7 +144,8 @@ TO authenticated;
 -- Backend workflow code will create requests through trusted server-side
 -- operations and enforce state transitions:
 --
--- pending -> approved | rejected | cancelled | expired
+-- pending -> code_submitted | cancelled | expired
+-- code_submitted -> approved | rejected | cancelled | expired
 -- approved -> completed | cancelled | expired
 --
 -- Terminal states:
