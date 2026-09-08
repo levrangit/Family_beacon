@@ -1,27 +1,40 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from agent.device_agent.registration import RegistrationCoordinator
 
 
-def test_start_creates_temporary_registration_request() -> None:
-    coordinator = RegistrationCoordinator(ttl_minutes=10)
+def test_set_request_stores_backend_issued_registration_request() -> None:
+    coordinator = RegistrationCoordinator()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
-    request = coordinator.start()
+    request = coordinator.set_request(
+        request_id="request-001",
+        registration_code="ABCD-2345",
+        expires_at=expires_at,
+    )
 
     assert coordinator.request == request
-    assert len(request.registration_code) == 6
-    assert request.registration_code.isalnum()
-    assert request.expires_at - request.created_at == timedelta(minutes=10)
-    assert request.request_id
+    assert request.request_id == "request-001"
+    assert request.registration_code == "ABCD-2345"
+    assert request.expires_at == expires_at
 
 
-def test_start_replaces_previous_request() -> None:
+def test_set_request_replaces_previous_request() -> None:
     coordinator = RegistrationCoordinator()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
-    first = coordinator.start()
-    second = coordinator.start()
+    first = coordinator.set_request(
+        request_id="request-001",
+        registration_code="ABCD-2345",
+        expires_at=expires_at,
+    )
+    second = coordinator.set_request(
+        request_id="request-002",
+        registration_code="EFGH-6789",
+        expires_at=expires_at,
+    )
 
     assert first.request_id != second.request_id
     assert coordinator.request == second
@@ -29,13 +42,23 @@ def test_start_replaces_previous_request() -> None:
 
 def test_cancel_removes_active_request() -> None:
     coordinator = RegistrationCoordinator()
-    coordinator.start()
+    coordinator.set_request(
+        request_id="request-001",
+        registration_code="ABCD-2345",
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+    )
 
     coordinator.cancel()
 
     assert coordinator.request is None
 
 
-def test_invalid_ttl_is_rejected() -> None:
-    with pytest.raises(ValueError, match="ttl_minutes"):
-        RegistrationCoordinator(ttl_minutes=0)
+def test_set_request_requires_timezone_aware_expiry() -> None:
+    coordinator = RegistrationCoordinator()
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        coordinator.set_request(
+            request_id="request-001",
+            registration_code="ABCD-2345",
+            expires_at=datetime.now(),
+        )
