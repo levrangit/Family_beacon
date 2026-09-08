@@ -5,8 +5,10 @@ from telegram_bot.device_registration_handlers import (
     handle_device_registration_message,
 )
 from telegram_bot.family_rename_handlers import handle_family_rename_message
+from telegram_bot.agent_installation_handlers import handle_agent_installation_action
 
 from telethon import TelegramClient, events
+from telethon import Button
 
 from telegram_bot.backend_client import BackendClient
 from telegram_bot.config import (
@@ -19,7 +21,7 @@ from telegram_bot.config import (
 )
 from telegram_bot.handlers.start import (
     handle_child_action,
-    handle_parent_action,
+    handle_parent_action as handle_parent_action_base,
     handle_registration_message,
     handle_role,
     handle_start,
@@ -59,7 +61,12 @@ async def child_role_handler(event: events.CallbackQuery.Event) -> None:
 
 @client.on(events.CallbackQuery(pattern=r"^parent:"))
 async def parent_action_handler(event: events.CallbackQuery.Event) -> None:
-    await handle_parent_action(event, backend)
+    await handle_parent_action_base(event, backend)
+
+
+@client.on(events.CallbackQuery(data=b"parent:agent_installation"))
+async def parent_agent_installation_handler(event: events.CallbackQuery.Event) -> None:
+    await handle_agent_installation_action(event, backend)
 
 
 @client.on(events.CallbackQuery(
