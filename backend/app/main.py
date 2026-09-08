@@ -47,6 +47,10 @@ from app.config import TELEGRAM_BOT_SHARED_SECRET
 from app.supabase_client import close_http_client, get_user_client, supabase
 from app.telegram_child import TelegramChildService
 from app.telegram_parent import TelegramParentService
+from app.device_registration import (
+    CreateDeviceRegistrationRequest,
+    create_device_registration_request,
+)
 
 from app.commands import (
     CreateCommandRequest,
@@ -355,18 +359,19 @@ async def register_parent_endpoint(
         raise HTTPException(status_code=403, detail="Invalid Telegram bot authentication")
 
     if supabase is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Supabase configuration is missing",
-        )
+        raise HTTPException(status_code=503, detail="Supabase configuration is missing")
 
     try:
         return register_parent(supabase, data)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/device-registration/requests")
+async def create_device_registration_request_endpoint(
+    data: CreateDeviceRegistrationRequest,
+):
+    return create_device_registration_request(data)
 
 
 @app.post("/families/{family_id}/invite")
@@ -375,19 +380,12 @@ async def create_family_invite_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
     user_client = get_user_client(access_token)
 
     try:
-        return create_family_invite(
-            user_client,
-            family_id,
-        )
+        return create_family_invite(user_client, family_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/families/redeem-invite")
@@ -396,19 +394,12 @@ async def redeem_family_invite_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
     user_client = get_user_client(access_token)
 
     try:
-        return redeem_family_invite(
-            user_client,
-            data.code,
-        )
+        return redeem_family_invite(user_client, data.code)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/families")
@@ -417,18 +408,9 @@ async def create_family(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
     user_client = get_user_client(access_token)
-
-    response = (
-        user_client
-        .rpc("create_family", {"family_name": data.name})
-        .execute()
-    )
-
-    return {
-        "family_id": response.data,
-    }
+    response = user_client.rpc("create_family", {"family_name": data.name}).execute()
+    return {"family_id": response.data}
 
 
 @app.post("/children")
@@ -438,12 +420,7 @@ async def create_child_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return create_child(
-        access_token=access_token,
-        family_id=family_id,
-        data=data,
-    )
+    return create_child(access_token=access_token, family_id=family_id, data=data)
 
 
 @app.get("/children")
@@ -452,11 +429,7 @@ async def list_children_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return list_children(
-        access_token=access_token,
-        family_id=family_id,
-    )
+    return list_children(access_token=access_token, family_id=family_id)
 
 
 @app.post("/devices")
@@ -465,11 +438,7 @@ async def create_device_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return create_device(
-        access_token=access_token,
-        data=data,
-    )
+    return create_device(access_token=access_token, data=data)
 
 
 @app.get("/devices")
@@ -478,11 +447,7 @@ async def list_devices_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return list_devices(
-        access_token=access_token,
-        child_id=child_id,
-    )
+    return list_devices(access_token=access_token, child_id=child_id)
 
 
 @app.get("/devices/{device_id}")
@@ -491,11 +456,7 @@ async def get_device_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return get_device(
-        access_token=access_token,
-        device_id=device_id,
-    )
+    return get_device(access_token=access_token, device_id=device_id)
 
 
 @app.get("/devices/{device_id}/updates")
@@ -504,11 +465,7 @@ async def list_device_updates_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return list_device_updates(
-        access_token=access_token,
-        device_id=device_id,
-    )
+    return list_device_updates(access_token=access_token, device_id=device_id)
 
 
 @app.get("/devices/{device_id}/updates/{update_id}")
@@ -518,12 +475,7 @@ async def get_device_update_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return get_device_update(
-        access_token=access_token,
-        device_id=device_id,
-        update_id=update_id,
-    )
+    return get_device_update(access_token=access_token, device_id=device_id, update_id=update_id)
 
 
 @app.patch("/devices/{device_id}")
@@ -533,12 +485,7 @@ async def update_device_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return update_device(
-        access_token=access_token,
-        device_id=device_id,
-        data=data,
-    )
+    return update_device(access_token=access_token, device_id=device_id, data=data)
 
 
 @app.delete("/devices/{device_id}")
@@ -547,11 +494,7 @@ async def delete_device_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return delete_device(
-        access_token=access_token,
-        device_id=device_id,
-    )
+    return delete_device(access_token=access_token, device_id=device_id)
 
 
 @app.post("/time-policies")
@@ -560,11 +503,7 @@ async def create_time_policy_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return create_time_policy(
-        access_token=access_token,
-        data=data,
-    )
+    return create_time_policy(access_token=access_token, data=data)
 
 
 @app.get("/time-policies")
@@ -573,11 +512,7 @@ async def list_time_policies_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return list_time_policies(
-        access_token=access_token,
-        child_id=child_id,
-    )
+    return list_time_policies(access_token=access_token, child_id=child_id)
 
 
 @app.get("/time-policies/{policy_id}")
@@ -586,11 +521,7 @@ async def get_time_policy_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return get_time_policy(
-        access_token=access_token,
-        policy_id=policy_id,
-    )
+    return get_time_policy(access_token=access_token, policy_id=policy_id)
 
 
 @app.patch("/time-policies/{policy_id}")
@@ -600,12 +531,7 @@ async def update_time_policy_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return update_time_policy(
-        access_token=access_token,
-        policy_id=policy_id,
-        data=data,
-    )
+    return update_time_policy(access_token=access_token, policy_id=policy_id, data=data)
 
 
 @app.delete("/time-policies/{policy_id}")
@@ -614,11 +540,7 @@ async def delete_time_policy_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return delete_time_policy(
-        access_token=access_token,
-        policy_id=policy_id,
-    )
+    return delete_time_policy(access_token=access_token, policy_id=policy_id)
 
 
 @app.post("/time-usage")
@@ -627,11 +549,7 @@ async def record_time_usage_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return record_time_usage(
-        access_token=access_token,
-        data=data,
-    )
+    return record_time_usage(access_token=access_token, data=data)
 
 
 @app.get("/time-usage")
@@ -640,11 +558,7 @@ async def list_time_usage_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return list_time_usage(
-        access_token=access_token,
-        child_id=child_id,
-    )
+    return list_time_usage(access_token=access_token, child_id=child_id)
 
 
 @app.post("/commands")
@@ -653,11 +567,7 @@ async def create_command_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return create_command(
-        access_token=access_token,
-        data=data,
-    )
+    return create_command(access_token=access_token, data=data)
 
 
 @app.get("/commands")
@@ -666,11 +576,7 @@ async def list_commands_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return list_commands(
-        access_token=access_token,
-        device_id=device_id,
-    )
+    return list_commands(access_token=access_token, device_id=device_id)
 
 
 @app.get("/commands/{command_id}")
@@ -679,11 +585,7 @@ async def get_command_endpoint(
     auth=Depends(get_current_user),
 ):
     current_user, access_token = auth
-
-    return get_command(
-        access_token=access_token,
-        command_id=command_id,
-    )
+    return get_command(access_token=access_token, command_id=command_id)
 
 
 @app.post("/device/auth")
@@ -718,11 +620,7 @@ async def telegram_child_dashboard_endpoint(
 @app.get("/me")
 async def me(auth=Depends(get_current_user)):
     current_user, access_token = auth
-
-    profile = get_profile(
-        str(current_user.id),
-        access_token,
-    )
+    profile = get_profile(str(current_user.id), access_token)
 
     return {
         "user": {
