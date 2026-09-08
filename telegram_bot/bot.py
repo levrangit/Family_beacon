@@ -5,10 +5,12 @@ from telegram_bot.device_registration_handlers import (
     handle_device_registration_message,
 )
 from telegram_bot.family_rename_handlers import handle_family_rename_message
-from telegram_bot.agent_installation_handlers import handle_agent_installation_action
+from telegram_bot.agent_installation_handlers import (
+    handle_agent_installation_action,
+    parent_family_buttons_with_installation,
+)
 
 from telethon import TelegramClient, events
-from telethon import Button
 
 from telegram_bot.backend_client import BackendClient
 from telegram_bot.config import (
@@ -67,6 +69,36 @@ async def parent_action_handler(event: events.CallbackQuery.Event) -> None:
 @client.on(events.CallbackQuery(data=b"parent:agent_installation"))
 async def parent_agent_installation_handler(event: events.CallbackQuery.Event) -> None:
     await handle_agent_installation_action(event, backend)
+
+
+@client.on(events.CallbackQuery(data=b"parent:family"))
+async def parent_family_installation_button_handler(event: events.CallbackQuery.Event) -> None:
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+    try:
+        family = await backend.get_parent_family(telegram_id)
+    except Exception:
+        return
+    children = family.get("children") or []
+    text = "🏠 Семья" if children else "🏠 Семья\n\nДети не зарегистрированы."
+    await event.edit(text, buttons=parent_family_buttons_with_installation(family))
+
+
+@client.on(events.CallbackQuery(data=b"parent:family:rename:cancel"))
+async def parent_family_rename_cancel_installation_button_handler(
+    event: events.CallbackQuery.Event,
+) -> None:
+    telegram_id = event.sender_id
+    if telegram_id is None:
+        return
+    try:
+        family = await backend.get_parent_family(telegram_id)
+    except Exception:
+        return
+    children = family.get("children") or []
+    text = "🏠 Семья" if children else "🏠 Семья\n\nДети не зарегистрированы."
+    await event.edit(text, buttons=parent_family_buttons_with_installation(family))
 
 
 @client.on(events.CallbackQuery(
