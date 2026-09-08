@@ -23,7 +23,6 @@ class FakeNamedPipeIPCServer:
 class FakeBackendClient:
     def __init__(self):
         self.created = []
-        self.cancelled = []
 
     def create_device_registration_request(self, **kwargs):
         self.created.append(kwargs)
@@ -33,10 +32,6 @@ class FakeBackendClient:
             "status": "pending",
             "expires_at": "2030-01-01T00:10:00+00:00",
         }
-
-    def cancel_device_registration_request(self, request_id: str):
-        self.cancelled.append(request_id)
-        return {"id": request_id, "status": "cancelled"}
 
 
 def test_runtime_starts_and_stops_ipc_server(monkeypatch) -> None:
@@ -73,7 +68,7 @@ def test_runtime_handles_status_request(monkeypatch) -> None:
     }
 
 
-def test_runtime_creates_backend_registration_and_cancels_it(monkeypatch) -> None:
+def test_runtime_creates_backend_registration_and_cancels_local_state(monkeypatch) -> None:
     monkeypatch.setattr(
         "agent.device_agent.service.runtime.NamedPipeIPCServer",
         FakeNamedPipeIPCServer,
@@ -99,7 +94,6 @@ def test_runtime_creates_backend_registration_and_cancels_it(monkeypatch) -> Non
 
     cancelled = runtime.handle_ipc_request({"type": "registration.cancel"})
     assert cancelled == {"ok": True, "type": "registration.cancel"}
-    assert backend.cancelled == ["request-001"]
 
     status = runtime.handle_ipc_request({"type": "status"})
     assert status["registration_active"] is False
