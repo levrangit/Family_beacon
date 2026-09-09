@@ -3,25 +3,16 @@ import uuid
 
 import pytest
 import requests
-from supabase import create_client
 
 from app.config import SUPABASE_KEY, SUPABASE_URL
 
 
 @pytest.mark.integration
-def test_full_parent_invite_flow(supabase_service_client):
+def test_full_parent_invite_flow(supabase_service_client, parent_access_token):
     """Exercise registration -> family -> invite -> transfer -> redeem through real services."""
     api_url = os.getenv("FAMILY_BEACON_API_URL", "http://127.0.0.1:8000")
-    first_parent_email = os.getenv("TEST_PARENT_EMAIL") or os.getenv("TEST_EMAIL")
-    first_parent_password = os.getenv("TEST_PARENT_PASSWORD") or os.getenv("TEST_PASSWORD")
-    second_parent_password = os.getenv("TEST_SECOND_PARENT_PASSWORD")
+    second_parent_password = f"Test-{uuid.uuid4().hex}-Aa1!"
     telegram_bot_shared_secret = os.getenv("TELEGRAM_BOT_SHARED_SECRET")
-
-    if not first_parent_email or not first_parent_password or not second_parent_password:
-        pytest.fail(
-            "TEST_PARENT_EMAIL, TEST_PARENT_PASSWORD and "
-            "TEST_SECOND_PARENT_PASSWORD are required for the integration test"
-        )
 
     if not telegram_bot_shared_secret:
         pytest.fail("TELEGRAM_BOT_SHARED_SECRET is required for the integration test")
@@ -29,15 +20,8 @@ def test_full_parent_invite_flow(supabase_service_client):
     if not SUPABASE_URL or not SUPABASE_KEY:
         pytest.fail("Supabase configuration is required for the integration test")
 
-    first_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    first_auth = first_client.auth.sign_in_with_password(
-        {"email": first_parent_email, "password": first_parent_password}
-    )
-    assert first_auth.session is not None
-    first_token = first_auth.session.access_token
-
     api = requests.Session()
-    api.headers.update({"Authorization": f"Bearer {first_token}"})
+    api.headers.update({"Authorization": f"Bearer {parent_access_token}"})
 
     family_id = None
     invite_id = None
