@@ -27,7 +27,7 @@ class BackendClient:
         agent_version: str | None,
     ) -> dict:
         return self._post(
-            "/agent/installations/bootstrap",
+            "/agent-installations/bootstrap",
             {
                 "installation_code": installation_code,
                 "agent_secret": agent_secret,
