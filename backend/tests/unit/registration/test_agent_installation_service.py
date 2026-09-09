@@ -68,8 +68,21 @@ class FakeQuery:
 class FakeClient:
     def __init__(self):
         self.tables = {
-            "profiles": [{"id": "parent-1", "role": "parent", "is_active": True}],
-            "family_members": [{"profile_id": "parent-1", "member_type": "parent", "family_id": "family-1"}],
+            "profiles": [
+                {
+                    "id": "parent-1",
+                    "telegram_id": 123,
+                    "role": "parent",
+                    "is_active": True,
+                }
+            ],
+            "family_members": [
+                {
+                    "profile_id": "parent-1",
+                    "member_type": "parent",
+                    "family_id": "family-1",
+                }
+            ],
             "agent_installations": [],
         }
 
