@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import threading
-from multiprocessing.connection import Listener
+from multiprocessing.connection import Client, Listener
 from typing import Any, Callable
 
 from .protocol import IPC_AUTHKEY, MAX_MESSAGE_SIZE, decode_message, encode_message
@@ -40,10 +40,17 @@ class NamedPipeIPCServer:
             self._listener.close()
             return
         self._running = False
+        try:
+            wake_connection = Client(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
+        except (OSError, EOFError, ConnectionError):
+            wake_connection = None
+        if wake_connection is not None:
+            wake_connection.close()
         self._listener.close()
         if self._thread is not None:
             self._thread.join(timeout=1)
-            self._thread = None
+            if not self._thread.is_alive():
+                self._thread = None
 
     def _serve(self) -> None:
         while self._running:
