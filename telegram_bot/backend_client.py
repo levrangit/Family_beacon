@@ -102,9 +102,12 @@ class BackendClient:
         return response.json()
 
     async def create_agent_installation(self, telegram_id: int) -> dict[str, Any]:
+        payload = {"telegram_id": telegram_id}
+
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
-                f"{self.base_url}/telegram/parent/agent-installations/{telegram_id}",
+                f"{self.base_url}/agent-installations",
+                json=payload,
                 headers=self._headers(),
             )
         response.raise_for_status()
