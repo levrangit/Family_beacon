@@ -1,7 +1,7 @@
 import pytest
 
 from tests.support.auth.client import AuthTestClient
-from tests.support.auth.users import AuthTestUser, get_test_user
+from tests.support.auth.users import AuthTestUser
 
 
 @pytest.mark.integration
@@ -22,21 +22,15 @@ def test_invalid_credentials_fail_without_exposing_password():
 
 
 @pytest.mark.integration
-def test_parent_can_authenticate_and_access_me():
-    user = get_test_user("parent")
+def test_parent_can_authenticate_and_access_me(parent_client):
+    response = parent_client.get("/me")
 
-    client = AuthTestClient(user)
-    try:
-        response = client.get("/me")
+    assert response.status_code == 200
 
-        assert response.status_code == 200
+    data = response.json()
 
-        data = response.json()
-
-        assert data["user"]["email"] == user.email
-        assert data["profile"]["role"] == user.expected_role
-    finally:
-        client.close()
+    assert data["user"]["email"] == parent_client.user.email
+    assert data["profile"]["role"] == parent_client.user.expected_role
 
 
 @pytest.mark.integration
