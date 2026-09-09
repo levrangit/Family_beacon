@@ -25,6 +25,7 @@ class NamedPipeIPCServer:
         self._listener = Listener(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
         self._running = False
         self._thread: threading.Thread | None = None
+        self._connection: Any | None = None
 
     def start(self) -> None:
         """Start accepting Named Pipe clients in a background thread."""
@@ -35,11 +36,18 @@ class NamedPipeIPCServer:
         self._thread.start()
 
     def stop(self) -> None:
-        """Stop the Named Pipe listener."""
+        """Stop the Named Pipe listener and active connection."""
         if not self._running:
             self._listener.close()
             return
         self._running = False
+        connection = self._connection
+        self._connection = None
+        if connection is not None:
+            try:
+                connection.close()
+            except (OSError, EOFError):
+                pass
         try:
             wake_connection = Client(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
         except (OSError, EOFError, ConnectionError):
@@ -58,9 +66,11 @@ class NamedPipeIPCServer:
                 connection = self._listener.accept()
             except (OSError, EOFError):
                 break
+            self._connection = connection
             try:
                 self._serve_connection(connection)
             finally:
+                self._connection = None
                 connection.close()
 
     def _serve_connection(self, connection: Any) -> None:
