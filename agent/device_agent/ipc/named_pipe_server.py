@@ -48,12 +48,21 @@ class NamedPipeIPCServer:
                 connection.close()
             except (OSError, EOFError):
                 pass
-        try:
-            wake_connection = Client(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
-        except (OSError, EOFError, ConnectionError):
-            wake_connection = None
-        if wake_connection is not None:
-            wake_connection.close()
+
+        if self._thread is not None:
+            self._thread.join(timeout=1)
+
+        if self._thread is not None and self._thread.is_alive():
+            try:
+                wake_connection = Client(self.endpoint, family="AF_PIPE", authkey=IPC_AUTHKEY)
+            except (OSError, EOFError, ConnectionError):
+                wake_connection = None
+            if wake_connection is not None:
+                try:
+                    wake_connection.close()
+                except (OSError, EOFError):
+                    pass
+
         self._listener.close()
         if self._thread is not None:
             self._thread.join(timeout=1)
@@ -71,7 +80,10 @@ class NamedPipeIPCServer:
                 self._serve_connection(connection)
             finally:
                 self._connection = None
-                connection.close()
+                try:
+                    connection.close()
+                except (OSError, EOFError):
+                    pass
 
     def _serve_connection(self, connection: Any) -> None:
         """Serve requests until the client closes the connection."""
