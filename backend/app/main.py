@@ -53,6 +53,12 @@ from app.device_registration import (
     create_device_registration_request,
     submit_device_registration_code,
 )
+from app.agent_installation import (
+    BootstrapAgentInstallationRequest,
+    CreateAgentInstallationRequest,
+    bootstrap_agent_installation,
+    create_agent_installation,
+)
 
 from app.commands import (
     CreateCommandRequest,
@@ -381,6 +387,22 @@ async def submit_device_registration_code_endpoint(
     data: SubmitDeviceRegistrationCodeRequest,
 ):
     return submit_device_registration_code(data)
+
+
+@app.post("/agent-installations")
+async def create_agent_installation_endpoint(
+    data: CreateAgentInstallationRequest,
+    x_telegram_bot_key: str | None = Header(default=None),
+):
+    _telegram_parent_service(x_telegram_bot_key)
+    return create_agent_installation(data)
+
+
+@app.post("/agent-installations/bootstrap")
+async def bootstrap_agent_installation_endpoint(
+    data: BootstrapAgentInstallationRequest,
+):
+    return bootstrap_agent_installation(data)
 
 
 @app.post("/families/{family_id}/invite")
