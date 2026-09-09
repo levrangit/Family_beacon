@@ -8,12 +8,12 @@
 
 ## 2. Основное правило структуры
 
-Первый уровень каталогов `backend/tests/` определяется **типом теста**, второй — **областью системы**.
+Первый уровень каталогов `backend/tests_backend/` определяется **типом теста**, второй — **областью системы**.
 
 Рекомендуемая структура:
 
 ```text
-backend/tests/
+backend/tests_backend/
 │
 ├── conftest.py
 │
@@ -57,7 +57,7 @@ backend/tests/
 
 ## 3. Unit-тесты
 
-Каталог: `backend/tests/unit/`
+Каталог: `backend/tests_backend/unit/`
 
 Unit-тест проверяет изолированную бизнес-логику или функцию.
 
@@ -85,7 +85,7 @@ unit/updates/
 
 ## 4. API-тесты
 
-Каталог: `backend/tests/api/`
+Каталог: `backend/tests_backend/api/`
 
 API-тест проверяет HTTP endpoint и его контракт на уровне приложения.
 
@@ -98,7 +98,7 @@ API-тест проверяет HTTP endpoint и его контракт на у
 
 ## 5. Contract-тесты
 
-Каталог: `backend/tests/contracts/`
+Каталог: `backend/tests_backend/contracts/`
 
 Contract-тест проверяет соглашение между компонентами системы: формат запроса, ответа, сообщения или другого интерфейса взаимодействия.
 
@@ -113,7 +113,7 @@ contracts/devices/
 
 ## 6. Integration-тесты
 
-Каталог: `backend/tests/integration/`
+Каталог: `backend/tests_backend/integration/`
 
 Integration-тест проверяет взаимодействие нескольких реальных компонентов системы.
 
@@ -133,7 +133,7 @@ Integration-тест проверяет взаимодействие неско�
 
 ## 7. E2E-тесты
 
-Каталог: `backend/tests/e2e/`
+Каталог: `backend/tests_backend/e2e/`
 
 E2E-тест проверяет полный пользовательский или системный сценарий через несколько компонентов.
 
@@ -159,11 +159,11 @@ RUN_REAL_E2E == 1
 Например:
 
 ```text
-backend/tests/support/auth/client.py
-backend/tests/support/auth/users.py
+backend/tests_backend/support/auth/client.py
+backend/tests_backend/support/auth/users.py
 ```
 
-`conftest.py` остаётся в корне `backend/tests/`, если fixtures являются общими для всего backend test suite.
+`conftest.py` остаётся в корне `backend/tests_backend/`, если fixtures являются общими для всего backend test suite.
 
 ## 9. Регистрация родителя
 
@@ -199,9 +199,9 @@ e2e/invites/
 Тестовые контуры разных приложений не объединяются.
 
 ```text
-backend/tests/        -> Backend
-telegram_bot/tests/   -> Telegram Bot
-agent/tests/           -> Device Agent
+backend/tests_backend/        -> Backend
+telegram_bot/tests_telegram_bot/   -> Telegram Bot
+agent/tests_agent/           -> Device Agent
 ```
 
 Внутри каждого приложения допускается собственная классификация тестов.
@@ -209,13 +209,13 @@ agent/tests/           -> Device Agent
 Для Telegram Bot рекомендуется:
 
 ```text
-telegram_bot/tests/
+telegram_bot/tests_telegram_bot/
 ├── unit/
 ├── menus/
 └── registration/
 ```
 
-Для Device Agent тесты остаются в `agent/tests/` и не переносятся в `backend/tests/`.
+Для Device Agent тесты остаются в `agent/tests_agent/` и не переносятся в `backend/tests_backend/`.
 
 ## 12. Правила именования
 

@@ -6,8 +6,8 @@ import pytest
 from supabase import ClientOptions, create_client
 
 from app.config import SUPABASE_SERVICE_ROLE_KEY
-from tests.support.auth.client import AuthTestClient, SUPABASE_KEY, SUPABASE_URL
-from tests.support.auth.users import AuthTestUser
+from tests_backend.support.auth.client import AuthTestClient, SUPABASE_KEY, SUPABASE_URL
+from tests_backend.support.auth.users import AuthTestUser
 
 
 SUPABASE_HTTP_TIMEOUT = 120.0

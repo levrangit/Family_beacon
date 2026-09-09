@@ -1,7 +1,7 @@
 import pytest
 
-from tests.support.auth.client import AuthTestClient
-from tests.support.auth.users import AuthTestUser
+from tests_backend.support.auth.client import AuthTestClient
+from tests_backend.support.auth.users import AuthTestUser
 
 
 @pytest.mark.integration
