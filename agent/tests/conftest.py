@@ -41,5 +41,9 @@ def pytest_collect_file(file_path: Path, parent: Collector):
     if IS_WINDOWS or file_path.name == "conftest.py":
         return None
     if file_path.suffix == ".py" and file_path.parent.name == "tests":
-        return WindowsOnlySkipFile.from_parent(parent, path=file_path)
+        return WindowsOnlySkipFile.from_parent(
+            parent,
+            path=file_path,
+            name=file_path.name,
+        )
     return None
