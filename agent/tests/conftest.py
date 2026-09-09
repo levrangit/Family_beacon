@@ -2,30 +2,44 @@
 
 import os
 import sys
+from pathlib import Path
 
 import pytest
+from _pytest.nodes import Collector
 
 
 IS_WINDOWS = sys.platform == "win32"
 IS_CODESPACES = os.getenv("CODESPACES", "").lower() == "true"
 
 
-# The Device Agent is currently supported only on Windows.  Mark the whole
-# Agent test contour explicitly so Linux/Codespaces does not pretend to test
-# Windows-specific production behavior.
 pytestmark = pytest.mark.windows
 
 
-def pytest_collection_modifyitems(config, items):
-    """Skip Windows Agent tests when pytest is running outside Windows."""
+class WindowsOnlySkipItem(pytest.Item):
+    """A collection-safe skipped item for Windows-only Agent test files."""
 
-    if IS_WINDOWS:
-        return
+    def runtest(self) -> None:
+        reason = "Device Agent tests are Windows-only — запуск только на Windows"
+        if IS_CODESPACES:
+            reason += " (GitHub Codespaces/Linux)"
+        pytest.skip(reason)
 
-    reason = "Family Beacon Device Agent tests are Windows-only"
-    if IS_CODESPACES:
-        reason += " (GitHub Codespaces/Linux)"
+    def reportinfo(self):
+        return self.path, 0, self.name
 
-    skip = pytest.mark.skip(reason=reason)
-    for item in items:
-        item.add_marker(skip)
+
+class WindowsOnlySkipFile(Collector):
+    """Collect a single skipped item without importing the test module."""
+
+    def collect(self):
+        yield WindowsOnlySkipItem.from_parent(self, name=self.path.name)
+
+
+def pytest_collect_file(file_path: Path, parent: Collector):
+    """Skip the Agent test file before Linux can import Windows-only modules."""
+
+    if IS_WINDOWS or file_path.name == "conftest.py":
+        return None
+    if file_path.suffix == ".py" and file_path.parent.name == "tests":
+        return WindowsOnlySkipFile.from_parent(parent, path=file_path)
+    return None
