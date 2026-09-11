@@ -8,7 +8,7 @@ import os
 class AgentConfig:
     """Runtime settings required by the Device Agent service."""
 
-    agent_version: str = "0.1.0"
+    agent_version: str = "0.1.1"
     environment: str = "local"
     log_level: str = "INFO"
     backend_url: str = "http://127.0.0.1:8000"
