@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from agent.device_agent.backend_client import BackendClientError
+from agent.device_agent.config import AgentConfig
 from agent.device_agent.service.runtime import AgentRuntime
 
 
@@ -100,7 +101,7 @@ def test_runtime_creates_backend_registration_and_cancels_local_state(monkeypatc
             "platform": "windows",
             "device_id": "machine-guid-001",
             "hostname": "WIN-TEST",
-            "agent_version": "0.1.0",
+            "agent_version": AgentConfig().agent_version,
         }
     ]
 
