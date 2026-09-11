@@ -1,4 +1,4 @@
-"""Entry point for Device Agent 0.1.0."""
+"""Entry point for Device Agent 0.1.1."""
 
 from .config import load_config
 from .identity import collect_identity
