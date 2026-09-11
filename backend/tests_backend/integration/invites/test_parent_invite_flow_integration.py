@@ -108,16 +108,16 @@ def test_full_parent_invite_flow(supabase_service_client, parent_access_token):
                 else None,
             ),
             (
+                "second parent HTTP client",
+                lambda: second_api.close() if second_api is not None else None,
+            ),
+            (
                 "second parent Auth user",
                 lambda: supabase_service_client.auth.admin.delete_user(
                     second_parent_user_id
                 )
                 if second_parent_user_id is not None
                 else None,
-            ),
-            (
-                "second parent HTTP client",
-                lambda: second_api.close() if second_api is not None else None,
             ),
             ("parent HTTP client", api.close),
         )
