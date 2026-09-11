@@ -82,17 +82,17 @@ class TemporaryUserManager:
     def cleanup(self):
         errors = []
 
-        for http_client in reversed(self._clients):
-            try:
-                http_client.close()
-            except Exception:
-                errors.append("temporary Auth HTTP client")
-
         for user in reversed(self._users):
             try:
                 self.service_client.auth.admin.delete_user(user.user_id)
             except Exception:
                 errors.append(f"temporary Auth user {user.user_id}")
+
+        for http_client in reversed(self._clients):
+            try:
+                http_client.close()
+            except Exception:
+                errors.append("temporary Auth HTTP client")
 
         if errors:
             raise RuntimeError("Cleanup failed: " + ", ".join(errors))
