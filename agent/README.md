@@ -1,34 +1,34 @@
 # Family Beacon Device Agent 0.1.1
 
-Windows-only Device Agent for Family Beacon.
+Device Agent для Family Beacon, работающий только в Windows.
 
-## Purpose
+## Назначение
 
-The Device Agent runs on the child's Windows computer and provides the local device boundary between Windows, the Family Beacon Backend, and the user-facing Tray UI.
+Device Agent работает на компьютере ребёнка под управлением Windows и обеспечивает локальный контур взаимодействия между Windows, Family Beacon Backend и пользовательским Tray-интерфейсом.
 
-Version **0.1.1** establishes the following working foundation:
+Версия **0.1.1** формирует следующую рабочую основу:
 
-- Windows device identity collection
-- local Agent configuration
-- persistent local Agent installation secret generation/storage
-- communication with the Family Beacon Backend
-- creation of a device registration request
-- local registration state management
-- Windows Service runtime
-- authenticated local IPC between the Service and Tray
-- Windows Tray UI
-- device pairing/registration window
-- automated Agent test contour
+- сбор идентификаторов Windows-устройства;
+- локальная конфигурация Agent;
+- генерация и локальное хранение постоянного секрета установки Agent;
+- взаимодействие с Family Beacon Backend;
+- создание запроса на регистрацию устройства;
+- управление локальным состоянием регистрации;
+- работа в качестве Windows Service;
+- аутентифицированное локальное IPC-взаимодействие между Service и Tray;
+- Windows Tray UI;
+- окно сопряжения/регистрации устройства;
+- автоматизированный контур тестирования Agent.
 
-The current registration flow creates a Backend registration request and displays the registration code in the Tray UI. The Backend remains the authority for registration state and approval. Full approval polling, final device binding, heartbeat, command execution, and policy enforcement are not yet part of version 0.1.1.
+Текущий процесс регистрации создаёт запрос на регистрацию в Backend и отображает регистрационный код в Tray UI. Backend остаётся источником истины для состояния регистрации и решения об одобрении. Поллинг состояния одобрения, окончательная привязка устройства, heartbeat, выполнение команд и применение политик ещё не входят в версию 0.1.1.
 
-## Architecture
+## Архитектура
 
 ```text
 Windows
    │
    ├── Device Agent Service
-   │      ├── identity collection
+   │      ├── сбор идентификаторов
    │      ├── BackendClient
    │      ├── RegistrationCoordinator
    │      └── Named Pipe IPC server
@@ -43,61 +43,61 @@ Windows
         /device-registration/requests
 ```
 
-The Tray is a user interface. The Windows Service owns the Agent runtime and communicates with the Backend. The Tray does not call the Backend directly.
+Tray является пользовательским интерфейсом. Windows Service владеет runtime Agent и взаимодействует с Backend. Tray не обращается к Backend напрямую.
 
-## Device identity
+## Идентификация устройства
 
-The Agent collects the following identity payload:
+Agent собирает следующий набор идентификаторов:
 
 - `component`: `device-agent`
-- `version`: Agent version (`0.1.1`)
+- `version`: версия Agent (`0.1.1`)
 - `platform`: `windows`
 - `windows_machine_guid`: Windows `MachineGuid`
-- `hostname`: Windows hostname
-- `os_user_sid`: Windows user SID
-- `os_username`: Windows username
-- `os_session_identity`: current Windows session information
+- `hostname`: имя компьютера Windows
+- `os_user_sid`: SID пользователя Windows
+- `os_username`: имя пользователя Windows
+- `os_session_identity`: информация о текущей Windows-сессии
 
-`windows_machine_guid` is the device identity. The hostname is informational and is not used as the device identity.
+`windows_machine_guid` является идентификатором устройства. `hostname` имеет информационный характер и не используется как идентификатор устройства.
 
-## Local Agent credentials
+## Локальные учётные данные Agent
 
-The Agent has a local installation-secret mechanism used as the foundation for authenticated Agent installation/bootstrap:
+Agent имеет механизм работы с локальным секретом установки, который является основой для аутентифицированной установки/первоначальной инициализации Agent:
 
-- secret prefix: `fb_agent_`
-- generated with Python `secrets`
-- stored as JSON under `%PROGRAMDATA%\FamilyBeacon\agent_credentials.json`
-- falls back to `%USERPROFILE%\.family_beacon\agent_credentials.json` when necessary
-- writes through a temporary file followed by atomic replacement
+- префикс секрета: `fb_agent_`;
+- генерируется с использованием Python `secrets`;
+- хранится в JSON по пути `%PROGRAMDATA%\FamilyBeacon\agent_credentials.json`;
+- при необходимости используется резервный путь `%USERPROFILE%\.family_beacon\agent_credentials.json`;
+- запись выполняется через временный файл с последующей атомарной заменой.
 
-The Agent does not store Backend access tokens, refresh tokens, or private keys as part of the current 0.1.1 runtime flow.
+В текущем runtime-процессе версии 0.1.1 Agent не хранит Backend access token, refresh token или приватные ключи.
 
-## Backend communication
+## Взаимодействие с Backend
 
-The Agent uses a synchronous standard-library HTTP client.
+Agent использует синхронный HTTP-клиент на базе стандартной библиотеки Python.
 
-Current Backend operations:
+Текущие операции Backend:
 
 - `POST /agent-installations/bootstrap`
 - `POST /device-registration/requests`
 - `GET /device-registration/requests/{request_id}`
 - `POST /device-registration/cancel`
 
-The current runtime actively uses the registration-request creation and cancellation operations. The status endpoint is already available in the Backend client and is reserved for the next registration lifecycle step.
+В текущем runtime используются операции создания и отмены запроса на регистрацию. Endpoint получения состояния уже присутствует в Backend-клиенте и предназначен для следующего этапа жизненного цикла регистрации.
 
-Backend URL is configured through:
+URL Backend настраивается через:
 
 ```text
 FAMILY_BEACON_BACKEND_URL
 ```
 
-Default local value:
+Значение по умолчанию для локальной разработки:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-## Registration flow in 0.1.1
+## Процесс регистрации в версии 0.1.1
 
 ```text
 Tray
@@ -117,70 +117,70 @@ Agent Service
   ▼
 Tray
   │
-  └── displays registration code
+  └── отображает регистрационный код
 ```
 
-The user can cancel the local registration attempt through the Tray. Cancellation is sent from the Tray to the Service over local IPC, and the Service clears its local registration state.
+Пользователь может отменить локальную попытку регистрации через Tray. Запрос на отмену передаётся из Tray в Service через локальный IPC, после чего Service очищает своё локальное состояние регистрации.
 
 ## Windows Service
 
-The Agent includes a Windows Service named:
+Agent содержит Windows Service с именем:
 
 ```text
 FamilyBeaconDeviceAgent
 ```
 
-Display name:
+Отображаемое имя:
 
 ```text
 Family Beacon Device Agent
 ```
 
-The Service Control Manager is handled through `pywin32`. The Service is a thin adapter around `AgentRuntime`.
+Взаимодействие с Service Control Manager выполняется через `pywin32`. Сам Service является тонким адаптером вокруг `AgentRuntime`.
 
 ## Tray UI
 
-The Tray application uses **PySide6** and communicates with the Windows Service through the Named Pipe IPC layer.
+Tray-приложение использует **PySide6** и взаимодействует с Windows Service через слой Named Pipe IPC.
 
-The Tray currently provides:
+В текущей версии Tray предоставляет:
 
-- Family Beacon system-tray icon
-- registration start
-- registration code display
-- registration cancellation
-- Tray restart
-- Tray exit
+- иконку Family Beacon в системном трее;
+- запуск регистрации;
+- отображение регистрационного кода;
+- отмену регистрации;
+- перезапуск Tray;
+- выход из Tray.
 
-The Tray and Service are separate processes. Closing the Tray does not stop the Windows Service.
+Tray и Service являются отдельными процессами. Закрытие Tray не останавливает Windows Service.
 
-## Local IPC
+## Локальный IPC
 
-The Agent uses a Windows Named Pipe:
+Agent использует Windows Named Pipe:
 
 ```text
 \\.\pipe\family-beacon
 ```
 
-IPC uses `multiprocessing.connection` with `AF_PIPE` and an application auth key.
+Для IPC используется `multiprocessing.connection` с `AF_PIPE` и ключом аутентификации приложения.
 
-Current message types:
+Текущие типы сообщений:
 
 - `status`
 - `registration.start`
 - `registration.cancel`
 
-Messages are JSON objects separated by newline framing and are subject to a maximum message size.
+Сообщения представляют собой JSON-объекты с разделением сообщений по символу новой строки и ограничением максимального размера сообщения.
 
-## Registration state
+## Состояние регистрации
 
-The local `RegistrationCoordinator` currently tracks:
+Текущий `RegistrationCoordinator` отслеживает:
 
 - `request_id`
 - `registration_code`
 - `created_at`
 - `expires_at`
 
-Current lifecycle:
+Текущий жизненный цикл:
 
 ```text
 IDLE
@@ -193,33 +193,33 @@ REGISTRATION ACTIVE
   └── expiration ──► inactive
 ```
 
-The next lifecycle step is to make the Service observe the Backend registration status and transition the local Agent through approval, rejection, expiration, cancellation, and successful device binding states.
+Следующий этап жизненного цикла — заставить Service отслеживать состояние регистрации в Backend и переводить локальный Agent через состояния одобрения, отклонения, истечения срока, отмены и успешной привязки устройства.
 
-## Runtime configuration
+## Конфигурация runtime
 
-Current defaults:
+Текущие значения по умолчанию:
 
-| Setting | Default |
+| Параметр | Значение по умолчанию |
 |---|---|
-| Agent version | `0.1.1` |
-| Environment | `local` |
-| Log level | `INFO` |
-| Backend URL | `http://127.0.0.1:8000` |
-| Registration poll interval | `10` seconds |
+| Версия Agent | `0.1.1` |
+| Окружение | `local` |
+| Уровень логирования | `INFO` |
+| URL Backend | `http://127.0.0.1:8000` |
+| Интервал опроса регистрации | `10` секунд |
 
-Registration polling interval can be changed with:
+Интервал опроса регистрации можно изменить через:
 
 ```text
 FAMILY_BEACON_PAIRING_POLL_INTERVAL_SECONDS
 ```
 
-The value must be a positive integer.
+Значение должно быть положительным целым числом.
 
-## Running the Agent
+## Запуск Agent
 
-From the repository root on Windows.
+Из корневой директории репозитория в Windows.
 
-### Main application
+### Основное приложение
 
 ```text
 python -m agent.device_agent.main
@@ -233,74 +233,74 @@ python -m agent.device_agent.tray.tray
 
 ### Windows Service
 
-The Service entry point is:
+Точка входа Service:
 
 ```text
 python -m agent.device_agent.service.service
 ```
 
-Installation, start, stop, and other Service Control Manager commands are delegated to `pywin32`.
+Установка, запуск, остановка и другие команды управления Service Control Manager передаются в `pywin32`.
 
-## Tests
+## Тесты
 
-Agent tests are isolated under:
+Тесты Agent изолированы в:
 
 ```text
 agent/tests_agent
 ```
 
-Run them from the repository root on Windows:
+Запуск из корневой директории репозитория в Windows:
 
 ```text
 python -m pytest agent/tests_agent -q
 ```
 
-The Agent test contour covers:
+Контур тестирования Agent покрывает:
 
-- configuration
-- bootstrap credentials
-- Windows identity collection
-- registration state
-- Backend client behavior
-- Service runtime IPC
-- Named Pipe server/client behavior
-- pairing window behavior
-- Tray behavior
+- конфигурацию;
+- bootstrap credentials;
+- сбор идентификаторов Windows;
+- состояние регистрации;
+- работу Backend-клиента;
+- IPC Service runtime;
+- работу Named Pipe server/client;
+- работу окна сопряжения;
+- работу Tray.
 
-## Platform
+## Платформа
 
-The Device Agent is **Windows-only**.
+Device Agent работает **только в Windows**.
 
-The Backend and Telegram Bot remain platform-independent; the Agent itself depends on Windows APIs and Windows-specific runtime components.
+Backend и Telegram Bot остаются платформонезависимыми; сам Agent зависит от Windows API и компонентов runtime, специфичных для Windows.
 
-## Current limitations
+## Текущие ограничения
 
-Version 0.1.1 does not yet implement:
+Версия 0.1.1 пока не реализует:
 
-- completion of registration after parent approval
-- automatic polling/transition of the registration request in `AgentRuntime`
-- final device binding to a child after approval
-- persistent registered-device state
-- heartbeat
-- command retrieval and execution
-- policy enforcement
-- device usage reporting
-- hardware fingerprinting
-- automatic service installation/update mechanism
+- завершение регистрации после одобрения родителем;
+- автоматический опрос/переход состояния registration request в `AgentRuntime`;
+- окончательную привязку устройства к ребёнку после одобрения;
+- постоянное хранение состояния зарегистрированного устройства;
+- heartbeat;
+- получение и выполнение команд;
+- применение политик;
+- передачу информации об использовании устройства;
+- hardware fingerprinting;
+- автоматический механизм установки/обновления Windows Service.
 
-These are later lifecycle stages and are intentionally not represented as completed functionality in 0.1.1.
+Это последующие этапы жизненного цикла и они намеренно не представлены как уже реализованная функциональность версии 0.1.1.
 
-## Security boundaries
+## Границы безопасности
 
-The Agent separates responsibilities between processes:
+Agent разделяет ответственность между процессами:
 
-- Windows Service owns the runtime and Backend communication.
-- Tray owns the user interface.
-- Named Pipe IPC is the local communication boundary.
-- Backend remains the authority for registration and device state.
-- Windows MachineGuid identifies the device; hostname is informational.
-- Temporary/local credentials are kept outside source control.
+- Windows Service владеет runtime и взаимодействием с Backend.
+- Tray отвечает за пользовательский интерфейс.
+- Named Pipe IPC является границей локального взаимодействия.
+- Backend остаётся источником истины для регистрации и состояния устройства.
+- Windows MachineGuid идентифицирует устройство; hostname имеет информационный характер.
+- Временные/локальные учётные данные хранятся вне системы контроля версий.
 
-## Version
+## Версия
 
-Current Agent version: **0.1.1**
+Текущая версия Agent: **0.1.1**
