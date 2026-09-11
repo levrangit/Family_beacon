@@ -11,6 +11,7 @@ def test_invalid_credentials_fail_without_exposing_password():
         email="invalid.familybeacon.test@example.com",
         password="definitely-invalid-password",
         expected_role="parent",
+        user_id="invalid-user-id",
     )
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -50,13 +51,15 @@ def test_parent_supabase_client_fixture_is_authenticated(parent_supabase_client)
         parent_supabase_client
         .table("profiles")
         .select("id, role, is_active")
-        .limit(1)
+        .eq("id", parent_supabase_client.test_user_id)
+        .single()
         .execute()
     )
 
     assert response.data
-    assert response.data[0]["role"] == "parent"
-    assert response.data[0]["is_active"] is True
+    assert response.data["id"] == parent_supabase_client.test_user_id
+    assert response.data["role"] == "parent"
+    assert response.data["is_active"] is True
 
 
 @pytest.mark.integration

@@ -6,6 +6,7 @@ from starlette.testclient import TestClient
 from app.auth import get_current_user
 from app.family_invites import create_family_invite
 from app.main import app
+from tests_backend.support.auth.temporary_users import cleanup_resources
 
 
 @pytest.mark.integration
@@ -25,12 +26,12 @@ def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
         invite_redeemer_supabase_client.test_access_token,
     )
 
+    import app.main as main
+
+    original_get_user_client = main.get_user_client
+    main.get_user_client = lambda token: invite_redeemer_supabase_client
+
     try:
-        import app.main as main
-
-        original_get_user_client = main.get_user_client
-        main.get_user_client = lambda token: invite_redeemer_supabase_client
-
         with TestClient(app) as client:
             first_response = client.post(
                 "/families/redeem-invite",
@@ -50,10 +51,18 @@ def test_redeem_family_invite_endpoint_cannot_redeem_code_twice(
             assert second_response.json()["detail"] == (
                 "Invite is invalid, expired, revoked, or already used"
             )
-
     finally:
-        main.get_user_client = original_get_user_client
-        app.dependency_overrides.clear()
-        supabase_service_client.table("family_invites").delete().eq(
-            "id", created["invite_id"]
-        ).execute()
+        cleanup_resources(
+            (
+                "main.get_user_client restoration",
+                lambda: setattr(main, "get_user_client", original_get_user_client),
+            ),
+            ("dependency overrides", app.dependency_overrides.clear),
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", created["invite_id"])
+                .execute(),
+            ),
+        )

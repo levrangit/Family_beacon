@@ -16,7 +16,7 @@ class AuthTestUser:
     email: str
     password: str
     expected_role: str
-    user_id: str
+    user_id: str = ""
 
 
 class TemporaryUserManager:

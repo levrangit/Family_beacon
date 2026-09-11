@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.family_invites import create_family_invite, redeem_family_invite
+from tests_backend.support.auth.temporary_users import cleanup_resources
 
 
 @pytest.fixture
@@ -31,9 +32,15 @@ def test_redeem_family_invite_integration(
         assert redeemed["invite_id"] == created["invite_id"]
         assert redeemed["family_id"] == parent_family_id
     finally:
-        supabase_service_client.table("family_invites").delete().eq(
-            "id", created["invite_id"]
-        ).execute()
+        cleanup_resources(
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", created["invite_id"])
+                .execute(),
+            )
+        )
 
 
 @pytest.mark.integration
@@ -62,9 +69,15 @@ def test_redeem_family_invite_cannot_be_used_twice(
                 created["code"],
             )
     finally:
-        supabase_service_client.table("family_invites").delete().eq(
-            "id", created["invite_id"]
-        ).execute()
+        cleanup_resources(
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", created["invite_id"])
+                .execute(),
+            )
+        )
 
 
 @pytest.mark.integration
@@ -96,9 +109,15 @@ def test_redeem_expired_family_invite_is_rejected(
                 created["code"],
             )
     finally:
-        supabase_service_client.table("family_invites").delete().eq(
-            "id", created["invite_id"]
-        ).execute()
+        cleanup_resources(
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", created["invite_id"])
+                .execute(),
+            )
+        )
 
 
 @pytest.mark.integration
@@ -127,6 +146,12 @@ def test_redeem_revoked_family_invite_is_rejected(
                 created["code"],
             )
     finally:
-        supabase_service_client.table("family_invites").delete().eq(
-            "id", created["invite_id"]
-        ).execute()
+        cleanup_resources(
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", created["invite_id"])
+                .execute(),
+            )
+        )

@@ -5,6 +5,7 @@ import pytest
 import requests
 
 from app.config import SUPABASE_KEY, SUPABASE_URL
+from tests_backend.support.auth.temporary_users import cleanup_resources
 
 
 @pytest.mark.integration
@@ -87,16 +88,36 @@ def test_full_parent_invite_flow(supabase_service_client, parent_access_token):
         assert redeemed["invite_id"] == invite_id
         assert redeemed["family_id"] == str(family_id)
     finally:
-        if invite_id is not None:
-            supabase_service_client.table("family_invites").delete().eq(
-                "id", invite_id
-            ).execute()
-        if family_id is not None:
-            supabase_service_client.table("families").delete().eq(
-                "id", family_id
-            ).execute()
-        if second_parent_user_id is not None:
-            supabase_service_client.auth.admin.delete_user(second_parent_user_id)
-        if second_api is not None:
-            second_api.close()
-        api.close()
+        cleanup_resources(
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", invite_id)
+                .execute()
+                if invite_id is not None
+                else None,
+            ),
+            (
+                "family",
+                lambda: supabase_service_client.table("families")
+                .delete()
+                .eq("id", family_id)
+                .execute()
+                if family_id is not None
+                else None,
+            ),
+            (
+                "second parent HTTP client",
+                lambda: second_api.close() if second_api is not None else None,
+            ),
+            (
+                "second parent Auth user",
+                lambda: supabase_service_client.auth.admin.delete_user(
+                    second_parent_user_id
+                )
+                if second_parent_user_id is not None
+                else None,
+            ),
+            ("parent HTTP client", api.close),
+        )

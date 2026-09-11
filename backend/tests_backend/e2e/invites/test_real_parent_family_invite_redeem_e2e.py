@@ -6,6 +6,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from app.main import app
+from tests_backend.support.auth.temporary_users import cleanup_resources
 
 
 @pytest.mark.real_e2e
@@ -37,7 +38,6 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
 
     try:
         with TestClient(app) as client:
-            # 1. Real parent registration through the API.
             register1 = client.post(
                 "/auth/register-parent",
                 json={
@@ -58,7 +58,6 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
                 "Authorization": f"Bearer {parent1['access_token']}"
             }
 
-            # 2. The first registered parent creates a real family via the DB RPC.
             create_family = client.post(
                 "/families",
                 json={"name": f"E2E Family {suffix}"},
@@ -68,7 +67,6 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
             family_id = create_family.json()["family_id"]
             assert family_id
 
-            # 3. The first parent creates a real invite; hashing is not mocked.
             create_invite = client.post(
                 f"/families/{family_id}/invite",
                 headers=parent1_headers,
@@ -81,7 +79,6 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
             assert invite["code"]
             assert invite["expires_at"]
 
-            # 4. Register a second real parent.
             register2 = client.post(
                 "/auth/register-parent",
                 json={
@@ -103,7 +100,6 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
                 "Authorization": f"Bearer {parent2['access_token']}"
             }
 
-            # 5. The second parent redeems the real invite.
             redeem = client.post(
                 "/families/redeem-invite",
                 json={"code": invite["code"]},
@@ -116,7 +112,6 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
                 "family_id": family_id,
             }
 
-            # 6. Verify the second parent can read the family through normal RLS.
             family = client.get(
                 f"/families/{family_id}",
                 headers=parent2_headers,
@@ -125,15 +120,39 @@ def test_real_registration_family_invite_redeem_flow(supabase_service_client):
             assert family.json()["id"] == family_id
 
     finally:
-        if invite_id is not None:
-            supabase_service_client.table("family_invites").delete().eq(
-                "id", invite_id
-            ).execute()
-        if family_id is not None:
-            supabase_service_client.table("families").delete().eq(
-                "id", family_id
-            ).execute()
-        if parent2_user_id is not None:
-            supabase_service_client.auth.admin.delete_user(parent2_user_id)
-        if parent1_user_id is not None:
-            supabase_service_client.auth.admin.delete_user(parent1_user_id)
+        cleanup_resources(
+            (
+                "family invite",
+                lambda: supabase_service_client.table("family_invites")
+                .delete()
+                .eq("id", invite_id)
+                .execute()
+                if invite_id is not None
+                else None,
+            ),
+            (
+                "family",
+                lambda: supabase_service_client.table("families")
+                .delete()
+                .eq("id", family_id)
+                .execute()
+                if family_id is not None
+                else None,
+            ),
+            (
+                "parent 2 Auth user",
+                lambda: supabase_service_client.auth.admin.delete_user(
+                    parent2_user_id
+                )
+                if parent2_user_id is not None
+                else None,
+            ),
+            (
+                "parent 1 Auth user",
+                lambda: supabase_service_client.auth.admin.delete_user(
+                    parent1_user_id
+                )
+                if parent1_user_id is not None
+                else None,
+            ),
+        )
