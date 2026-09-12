@@ -147,7 +147,9 @@ async def voice_message_handler(event: events.NewMessage.Event) -> None:
         await event.respond("Не удалось распознать голосовое сообщение.")
         return
 
+    print(f"[VOICE] Sending transcription to text handlers: {text!r}", flush=True)
     await _handle_text_event(event, text)
+    print("[VOICE] Text handlers completed", flush=True)
 
 
 @client.on(events.NewMessage)
