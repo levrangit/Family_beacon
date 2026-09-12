@@ -6,9 +6,6 @@ import urllib.request
 from pathlib import Path
 from threading import Lock
 
-import torch
-import whisper
-
 MODEL_NAME = "turbo"
 DEFAULT_LANGUAGE = "ru"
 
@@ -25,6 +22,8 @@ def _whisper_cache_dir() -> Path:
 
 def _download_model_with_progress() -> Path:
     """Download the official Whisper model while showing percentage progress."""
+    import whisper
+
     url = whisper._MODELS[MODEL_NAME]
     expected_sha256 = url.split("/")[-2]
     target_dir = _whisper_cache_dir()
@@ -79,6 +78,8 @@ def load_model():
             if _model is None:
                 model_path = _download_model_with_progress()
                 print("[WHISPER] Loading model into memory...", flush=True)
+                import whisper
+
                 _model = whisper.load_model(str(model_path))
                 print("[WHISPER] Model loaded", flush=True)
     return _model
@@ -86,6 +87,8 @@ def load_model():
 
 def transcribe_audio(audio_path: str | Path, language: str = DEFAULT_LANGUAGE) -> str:
     """Transcribe an audio file with the local Whisper turbo model."""
+    import torch
+
     model = load_model()
     result = model.transcribe(
         str(audio_path),
