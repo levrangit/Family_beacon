@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
 import tempfile
 from pathlib import Path
@@ -88,6 +89,7 @@ else:
 
 client = TelegramClient(SESSION_PATH, API_ID, API_HASH, **client_kwargs)
 backend = BackendClient(BACKEND_URL, TELEGRAM_BOT_SHARED_SECRET)
+whisper_enabled = False
 
 
 class _TextEventAdapter:
@@ -111,7 +113,7 @@ async def _handle_text_event(event: events.NewMessage.Event, text: str) -> None:
 
 @client.on(events.NewMessage)
 async def voice_message_handler(event: events.NewMessage.Event) -> None:
-    if not event.message.voice:
+    if not whisper_enabled or not event.message.voice:
         return
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -160,11 +162,31 @@ async def start_handler(event: events.NewMessage.Event) -> None:
     await handle_start(event, backend)
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Family Beacon Telegram bot")
+    parser.add_argument(
+        "--whisper",
+        action="store_true",
+        help="enable local Whisper voice-message transcription",
+    )
+    return parser.parse_args()
+
+
 async def main() -> None:
+    global whisper_enabled
+
+    args = _parse_args()
+    whisper_enabled = args.whisper
+
     print("[START] Family Beacon Telegram bot", flush=True)
-    print("[WHISPER] Loading model: turbo...", flush=True)
-    await asyncio.to_thread(load_model)
-    print("[WHISPER] Model loaded", flush=True)
+    if whisper_enabled:
+        print("[WHISPER] Enabled", flush=True)
+        print("[WHISPER] Loading model: turbo...", flush=True)
+        await asyncio.to_thread(load_model)
+        print("[WHISPER] Model loaded", flush=True)
+    else:
+        print("[WHISPER] Disabled", flush=True)
+
     print("[TELEGRAM] Connecting...", flush=True)
     await client.start(bot_token=BOT_TOKEN)
     print("[TELEGRAM] Connected", flush=True)
