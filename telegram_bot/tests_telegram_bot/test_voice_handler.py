@@ -1,11 +1,10 @@
+import asyncio
 import os
 
 os.environ.setdefault("TELEGRAM_API_ID", "1")
 os.environ.setdefault("TELEGRAM_API_HASH", "test-api-hash")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-bot-token")
 os.environ.setdefault("TELEGRAM_BOT_SHARED_SECRET", "test-shared-secret")
-
-import pytest
 
 from telegram_bot import bot
 
@@ -17,10 +16,6 @@ class FakeVoiceMessage:
         with open(file, "wb") as output:
             output.write(b"fake audio")
         return file
-
-
-class FakeTextMessage:
-    voice = False
 
 
 class FakeEvent:
@@ -35,8 +30,7 @@ class FakeEvent:
         self.responses.append((args, kwargs))
 
 
-@pytest.mark.asyncio
-async def test_voice_message_is_transcribed_and_sent_to_existing_message_flow(monkeypatch):
+def test_voice_message_is_transcribed_and_sent_to_existing_message_flow(monkeypatch):
     event = FakeEvent(FakeVoiceMessage())
     seen = []
 
@@ -54,14 +48,13 @@ async def test_voice_message_is_transcribed_and_sent_to_existing_message_flow(mo
     monkeypatch.setattr(bot, "handle_family_rename_message", fake_family_handler)
     monkeypatch.setattr(bot, "handle_registration_message", fake_registration_handler)
 
-    await bot.voice_message_handler(event)
+    asyncio.run(bot.voice_message_handler(event))
 
     assert seen == [" ABCD-2345 "]
     assert event.responses == []
 
 
-@pytest.mark.asyncio
-async def test_text_message_handler_ignores_voice_message(monkeypatch):
+def test_text_message_handler_ignores_voice_message(monkeypatch):
     event = FakeEvent(FakeVoiceMessage())
 
     async def unexpected_handler(*args, **kwargs):
@@ -71,18 +64,17 @@ async def test_text_message_handler_ignores_voice_message(monkeypatch):
     monkeypatch.setattr(bot, "handle_family_rename_message", unexpected_handler)
     monkeypatch.setattr(bot, "handle_registration_message", unexpected_handler)
 
-    await bot.registration_message_handler(event)
+    asyncio.run(bot.registration_message_handler(event))
 
     assert event.responses == []
 
 
-@pytest.mark.asyncio
-async def test_voice_message_reports_empty_transcription(monkeypatch):
+def test_voice_message_reports_empty_transcription(monkeypatch):
     event = FakeEvent(FakeVoiceMessage())
 
     monkeypatch.setattr(bot, "transcribe_audio", lambda path: "")
 
-    await bot.voice_message_handler(event)
+    asyncio.run(bot.voice_message_handler(event))
 
     assert len(event.responses) == 1
     assert "Не удалось распознать" in event.responses[0][0][0]
