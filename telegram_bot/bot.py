@@ -14,7 +14,7 @@ from telegram_bot.agent_installation_handlers import (
     parent_family_buttons_with_installation,
 )
 
-from telethon import TelegramClient, events
+from telethon import TelegramClient, connection, events
 
 from telegram_bot.backend_client import BackendClient
 from telegram_bot.config import (
@@ -22,6 +22,9 @@ from telegram_bot.config import (
     API_ID,
     BACKEND_URL,
     BOT_TOKEN,
+    MT_PROXY_HOST,
+    MT_PROXY_PORT,
+    MT_PROXY_SECRET,
     SESSION_PATH,
     TELEGRAM_BOT_SHARED_SECRET,
 )
@@ -36,7 +39,16 @@ from telegram_bot.handlers.start import (
 from telegram_bot.speech_to_text import load_model, transcribe_audio
 
 
-client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
+client_kwargs = {
+    "connection": connection.ConnectionTcpMTProxyRandomizedIntermediate,
+}
+if MT_PROXY_HOST and MT_PROXY_PORT and MT_PROXY_SECRET:
+    client_kwargs["proxy"] = (MT_PROXY_HOST, MT_PROXY_PORT, MT_PROXY_SECRET)
+    print("[TELEGRAM] MTProto proxy configured", flush=True)
+else:
+    print("[TELEGRAM] MTProto proxy not configured", flush=True)
+
+client = TelegramClient(SESSION_PATH, API_ID, API_HASH, **client_kwargs)
 backend = BackendClient(BACKEND_URL, TELEGRAM_BOT_SHARED_SECRET)
 
 
@@ -164,6 +176,7 @@ async def main() -> None:
     print("[START] Family Beacon Telegram bot", flush=True)
     print("[WHISPER] Loading model: turbo...", flush=True)
     await asyncio.to_thread(load_model)
+    print("[WHISPER] Model loaded", flush=True)
     print("[TELEGRAM] Connecting...", flush=True)
     await client.start(bot_token=BOT_TOKEN)
     print("[TELEGRAM] Connected", flush=True)
