@@ -127,14 +127,20 @@ async def voice_message_handler(event: events.NewMessage.Event) -> None:
         flush=True,
     )
 
-    if not whisper_enabled:
-        print("[VOICE] Ignored: Whisper is disabled", flush=True)
-        return
-
     if not message.voice:
-        print("[VOICE] Ignored: message is not Telegram voice media", flush=True)
+        if not whisper_enabled:
+            print("[VOICE] Voice recognition is unavailable: Whisper is disabled", flush=True)
+            await event.respond("🎤 Голосовое распознавание недоступно.")
+        else:
+            print("[VOICE] Ignored: message is not Telegram voice media", flush=True)
         return
 
+    if not whisper_enabled:
+        print("[VOICE] Voice recognition is unavailable: Whisper is disabled", flush=True)
+        await event.respond("🎤 Голосовое распознавание недоступно.")
+        return
+
+    await event.respond("🎤 Голосовое сообщение получено.\n🔄 Начинаю распознавание...")
     print("[VOICE] Voice message detected; downloading audio...", flush=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         audio_path = Path(temp_dir) / "voice.ogg"
