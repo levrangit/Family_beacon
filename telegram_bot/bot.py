@@ -104,7 +104,7 @@ class _TextEventAdapter:
 
 async def _handle_text_event(event: events.NewMessage.Event, text: str) -> None:
     adapted_event = _TextEventAdapter(event, text)
-    await handle_device_registration_message(adapted_event, backend)
+    await handle_device_registration_message(adapted_event, backend, registration_sessions)
     await handle_family_rename_message(adapted_event, backend)
     await handle_registration_message(adapted_event, backend)
 
@@ -130,7 +130,7 @@ async def voice_message_handler(event: events.NewMessage.Event) -> None:
 async def registration_message_handler(event: events.NewMessage.Event) -> None:
     if event.message.voice:
         return
-    await handle_device_registration_message(event, backend)
+    await handle_device_registration_message(event, backend, registration_sessions)
     await handle_family_rename_message(event, backend)
     await handle_registration_message(event, backend)
 
@@ -139,7 +139,7 @@ async def registration_message_handler(event: events.NewMessage.Event) -> None:
 async def callback_handler(event: events.CallbackQuery.Event) -> None:
     data = event.data.decode("utf-8") if event.data else ""
     if data.startswith("device_registration:"):
-        await handle_device_registration_action(event, backend)
+        await handle_device_registration_action(event, backend, registration_sessions)
         return
     if data.startswith("agent_installation:"):
         await handle_agent_installation_action(event, backend)
