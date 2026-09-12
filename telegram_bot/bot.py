@@ -164,7 +164,6 @@ async def main() -> None:
     print("[START] Family Beacon Telegram bot", flush=True)
     print("[WHISPER] Loading model: turbo...", flush=True)
     await asyncio.to_thread(load_model)
-    print("[WHISPER] Model loaded", flush=True)
     print("[TELEGRAM] Connecting...", flush=True)
     await client.start(bot_token=BOT_TOKEN)
     print("[TELEGRAM] Connected", flush=True)
