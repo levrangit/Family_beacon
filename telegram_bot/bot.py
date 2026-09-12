@@ -161,9 +161,14 @@ async def child_action_handler(event: events.CallbackQuery.Event) -> None:
 
 
 async def main() -> None:
+    print("[START] Family Beacon Telegram bot", flush=True)
+    print("[WHISPER] Loading model: turbo...", flush=True)
     await asyncio.to_thread(load_model)
+    print("[WHISPER] Model loaded", flush=True)
+    print("[TELEGRAM] Connecting...", flush=True)
     await client.start(bot_token=BOT_TOKEN)
-    print("Family Beacon Telegram bot started")
+    print("[TELEGRAM] Connected", flush=True)
+    print("[BOT] Family Beacon Telegram bot started", flush=True)
     await client.run_until_disconnected()
 
 
