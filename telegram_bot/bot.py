@@ -14,7 +14,8 @@ from telegram_bot.agent_installation_handlers import (
     parent_family_buttons_with_installation,
 )
 
-from telethon import TelegramClient, connection, events
+from telethon import TelegramClient, events
+from tgnet.connection import TgNetConnection
 from tgnet.connection.faketls import TgNetConnectionTls
 
 from telegram_bot.backend_client import BackendClient
@@ -40,13 +41,49 @@ from telegram_bot.handlers.start import (
 from telegram_bot.speech_to_text import load_model, transcribe_audio
 
 
-client_kwargs = {
-    "connection": TgNetConnectionTls,
-}
+class _FakeTlsProxyConnection(TgNetConnectionTls):
+    """Adapt Telethon's proxy tuple to tgnet's FakeTLS connection API."""
+
+    def __init__(
+        self,
+        ip,
+        port,
+        dc_id,
+        *,
+        loggers,
+        proxy=None,
+        local_addr=None,
+        **kwargs,
+    ):
+        if not proxy or len(proxy) < 3:
+            raise ValueError("FakeTLS MTProto proxy requires host, port and secret")
+
+        proxy_host, proxy_port, proxy_secret = proxy[:3]
+        if isinstance(proxy_secret, str):
+            proxy_secret = bytes.fromhex(proxy_secret)
+
+        super().__init__(
+            proxy_host,
+            int(proxy_port),
+            dc_id,
+            loggers=loggers,
+            proxy=None,
+            local_addr=local_addr,
+            secret=proxy_secret,
+            **kwargs,
+        )
+
+
 if MT_PROXY_HOST and MT_PROXY_PORT and MT_PROXY_SECRET:
-    client_kwargs["proxy"] = (MT_PROXY_HOST, MT_PROXY_PORT, MT_PROXY_SECRET)
+    client_kwargs = {
+        "connection": _FakeTlsProxyConnection,
+        "proxy": (MT_PROXY_HOST, MT_PROXY_PORT, MT_PROXY_SECRET),
+    }
     print("[TELEGRAM] MTProto FakeTLS proxy configured", flush=True)
 else:
+    client_kwargs = {
+        "connection": TgNetConnection,
+    }
     print("[TELEGRAM] MTProto proxy not configured", flush=True)
 
 client = TelegramClient(SESSION_PATH, API_ID, API_HASH, **client_kwargs)
