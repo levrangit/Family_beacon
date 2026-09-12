@@ -113,14 +113,36 @@ async def _handle_text_event(event: events.NewMessage.Event, text: str) -> None:
 
 @client.on(events.NewMessage)
 async def voice_message_handler(event: events.NewMessage.Event) -> None:
-    if not whisper_enabled or not event.message.voice:
+    message = event.message
+    media = message.media
+    media_type = type(media).__name__ if media is not None else "None"
+    file_info = message.file
+    file_type = type(file_info).__name__ if file_info is not None else "None"
+    print(
+        "[VOICE] NewMessage received: "
+        f"id={message.id} sender={event.sender_id} "
+        f"voice={bool(message.voice)} audio={bool(message.audio)} "
+        f"document={bool(message.document)} media={media_type} file={file_type} "
+        f"text={message.raw_text!r}",
+        flush=True,
+    )
+
+    if not whisper_enabled:
+        print("[VOICE] Ignored: Whisper is disabled", flush=True)
         return
 
+    if not message.voice:
+        print("[VOICE] Ignored: message is not Telegram voice media", flush=True)
+        return
+
+    print("[VOICE] Voice message detected; downloading audio...", flush=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         audio_path = Path(temp_dir) / "voice.ogg"
-        await event.message.download_media(file=str(audio_path))
+        await message.download_media(file=str(audio_path))
+        print(f"[VOICE] Audio downloaded: {audio_path}", flush=True)
         text = await asyncio.to_thread(transcribe_audio, str(audio_path))
 
+    print(f"[VOICE] Transcription result: {text!r}", flush=True)
     if not text.strip():
         await event.respond("Не удалось распознать голосовое сообщение.")
         return
