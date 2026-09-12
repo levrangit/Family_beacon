@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import tempfile
+from pathlib import Path
+
 from telegram_bot.device_registration_handlers import (
     handle_device_registration_action,
     handle_device_registration_message,
@@ -29,10 +33,23 @@ from telegram_bot.handlers.start import (
     handle_start,
     registration_sessions,
 )
+from telegram_bot.speech_to_text import load_model, transcribe_audio
 
 
 client = TelegramClient(SESSION_PATH, API_ID, API_HASH)
 backend = BackendClient(BACKEND_URL, TELEGRAM_BOT_SHARED_SECRET)
+
+
+class _TextEventAdapter:
+    """Expose recognized voice text through the existing message-handler interface."""
+
+    def __init__(self, event: events.NewMessage.Event, text: str) -> None:
+        self._event = event
+        self.sender_id = event.sender_id
+        self.raw_text = text
+
+    async def respond(self, *args, **kwargs):
+        return await self._event.respond(*args, **kwargs)
 
 
 @client.on(events.NewMessage(pattern=r"^/start(?:@\w+)?$"))
@@ -41,7 +58,37 @@ async def start_handler(event: events.NewMessage.Event) -> None:
 
 
 @client.on(events.NewMessage())
+async def voice_message_handler(event: events.NewMessage.Event) -> None:
+    if not event.message or not event.message.voice:
+        return
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="family_beacon_voice_") as temp_dir:
+            audio_path = Path(temp_dir) / "voice.ogg"
+            await event.message.download_media(file=str(audio_path))
+            text = await asyncio.to_thread(transcribe_audio, audio_path)
+
+        if not text:
+            await event.respond("❌ Не удалось распознать голосовое сообщение.\n\nПопробуйте ещё раз.")
+            return
+
+        text_event = _TextEventAdapter(event, text)
+        if await handle_device_registration_message(text_event, backend, registration_sessions):
+            return
+        if await handle_family_rename_message(text_event, backend):
+            return
+        await handle_registration_message(text_event, backend)
+    except Exception:
+        await event.respond(
+            "❌ Не удалось обработать голосовое сообщение.\n\n"
+            "Попробуйте ещё раз позже.",
+        )
+
+
+@client.on(events.NewMessage())
 async def registration_message_handler(event: events.NewMessage.Event) -> None:
+    if event.message and event.message.voice:
+        return
     if event.raw_text and event.raw_text.startswith("/"):
         return
     if await handle_device_registration_message(event, backend, registration_sessions):
@@ -114,12 +161,11 @@ async def child_action_handler(event: events.CallbackQuery.Event) -> None:
 
 
 async def main() -> None:
+    await asyncio.to_thread(load_model)
     await client.start(bot_token=BOT_TOKEN)
     print("Family Beacon Telegram bot started")
     await client.run_until_disconnected()
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())
