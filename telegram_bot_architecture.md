@@ -1,223 +1,34 @@
-# Family Beacon — концепция Telegram-бота и регистрации пользователей
+# Family Beacon — архитектура Telegram-бота
 
-## 1. Общая концепция
-
-Telegram-бот Family Beacon является пользовательским интерфейсом системы для родителей и детей.
-
-Для работы с Telegram используется **Telethon на базе MTProto**, а не Telegram Bot API.
-
-Основная задача бота — определить пользователя по Telegram ID и предоставить соответствующий интерфейс.
-
-Общий сценарий:
-
-```text
-/start
-   ↓
-Telegram ID
-   ↓
-проверка profiles
-   ├── найден → Parent Menu
-   │
-   └── не найден
-          ↓
-       проверка children
-          ├── найден → Child Menu
-          │
-          └── не найден
-                 ↓
-        Welcome / выбор роли
-```
-
-Начальный экран:
-
-```text
-👋 Добро пожаловать в Family Beacon!
-Выберите свою роль, чтобы продолжить:
-
-[ 👨 Родитель ]
-[ 👦 Ребёнок ]
-```
+**Версия Telegram Bot:** `0.1.1`  
+**Ветка:** `develop`  
+**Назначение:** пользовательский Telegram-интерфейс Family Beacon для родителей и детей.
 
 ---
 
-## 2. Регистрация родителя
+## 1. Назначение Telegram-бота
 
-Пользователь выбирает:
+Telegram-бот Family Beacon является пользовательским интерфейсом системы.
 
-```text
-[ 👨 Родитель ]
-```
+Бот отвечает за:
 
-После этого бот последовательно запрашивает:
+- взаимодействие с пользователем в Telegram;
+- определение пользователя по Telegram ID;
+- отображение меню;
+- обработку callback-кнопок;
+- управление состоянием интерактивных диалогов;
+- сбор пользовательского ввода;
+- передачу команд и данных в Backend API;
+- обработку голосовых сообщений через локальный Whisper.
 
-```text
-Email
-↓
-Password
-```
+Бот **не является источником бизнес-состояния**.
 
-После получения данных Telegram-бот вызывает Backend API:
+Основные бизнес-данные хранятся в Supabase и изменяются через Backend API.
 
-```text
-POST /auth/register-parent
-```
-
-Передаваемые данные:
+Основной принцип:
 
 ```text
-telegram_id
-login
-password
-```
-
-Backend регистрирует пользователя через Supabase Auth.
-
-Telegram ID передаётся в metadata создаваемого пользователя.
-
-После создания пользователя механизм Supabase автоматически создаёт соответствующую запись в:
-
-```text
-profiles
-```
-
-с сохранением:
-
-```text
-profiles.telegram_id
-```
-
-После успешной регистрации пользователь попадает в:
-
-```text
-Parent Menu
-```
-
-### Важное правило
-
-Регистрация родителя **не создаёт автоматически новую family**.
-
-Создание семьи является отдельной операцией и выполняется в соответствующем пользовательском сценарии.
-
----
-
-## 3. Идентификация зарегистрированного пользователя
-
-При каждом обращении пользователя к боту используется его Telegram ID.
-
-Проверка выполняется в следующем порядке:
-
-```text
-Telegram ID
-   ↓
-profiles.telegram_id
-   ↓
-если найден
-   ↓
-Parent Menu
-```
-
-Если пользователь не найден среди родителей:
-
-```text
-Telegram ID
-   ↓
-children.telegram_id
-   ↓
-если найден
-   ↓
-Child Menu
-```
-
-Если пользователь не найден ни в одной из систем:
-
-```text
-Telegram ID
-   ↓
-Welcome
-   ↓
-выбор роли
-```
-
----
-
-## 4. Регистрация ребёнка
-
-Пользователь выбирает:
-
-```text
-[ 👦 Ребёнок ]
-```
-
-Бот запрашивает:
-
-```text
-Имя
-↓
-Invite Code
-```
-
-После получения данных выполняется проверка приглашения.
-
-Если invite code корректен:
-
-```text
-Telegram ID
-      ↓
-Invite Code
-      ↓
-определение family
-      ↓
-создание / привязка child
-      ↓
-сохранение Telegram ID
-      ↓
-Child Menu
-```
-
-Результатом регистрации является запись ребёнка, связанная с соответствующей family и Telegram ID.
-
-Invite code является частью процесса регистрации и **не является постоянным пунктом меню ребёнка**.
-
----
-
-## 5. Логика определения роли
-
-Telegram ID является основным идентификатором пользователя в Telegram-интерфейсе.
-
-Целевая логика:
-
-```text
-Telegram ID
-    │
-    ├── profiles.telegram_id
-    │       └── Parent
-    │
-    └── children.telegram_id
-            └── Child
-```
-
-Приоритет проверки:
-
-```text
-profiles
-   ↓
-children
-```
-
-После определения зарегистрированного пользователя бот сразу открывает соответствующее меню.
-
----
-
-## 6. Parent Menu
-
-После регистрации/идентификации родитель получает Parent Menu.
-
-Меню является основным интерфейсом родителя для управления Family Beacon.
-
-Конкретный набор функций меню развивается отдельно, но архитектурно родитель работает через Telegram-бота с Backend API, а Backend взаимодействует с Supabase.
-
-```text
-Parent
+Telegram
    ↓
 Telethon
    ↓
@@ -230,221 +41,860 @@ Supabase
 
 ---
 
-## 7. Child Menu
+## 2. Технологический стек
 
-После регистрации/идентификации ребёнок получает Child Menu.
-
-Ребёнок не проходит повторную регистрацию при каждом запуске бота.
-
-Система определяет его по:
+Telegram-бот использует:
 
 ```text
-children.telegram_id
+Python
+Telethon
+tgnet
+httpx
+python-dotenv
+OpenAI Whisper
+PyTorch
 ```
 
-и сразу открывает соответствующий интерфейс.
+Whisper использует модель `turbo`.
+
+---
+
+## 3. Telegram transport
+
+Бот работает через **Telethon и MTProto**.
+
+При отсутствии MTProto proxy используется `tgnet.TgNetConnection`.
+
+При наличии FakeTLS MTProto proxy используется специальный адаптер `_FakeTlsProxyConnection`, который адаптирует формат proxy Telethon к FakeTLS API `tgnet`.
+
+Итоговая схема:
 
 ```text
-Child
-   ↓
-Telegram ID
-   ↓
-children
-   ↓
-Child Menu
+Telegram
+    │
+    ▼
+Telethon
+    │
+    ├── direct MTProto
+    │
+    └── FakeTLS MTProto
+            │
+            ▼
+          tgnet
 ```
 
 ---
 
-## 8. Backend
+## 4. Основной модуль `bot.py`
 
-Telegram-бот не должен самостоятельно реализовывать бизнес-логику работы с Supabase.
+`telegram_bot/bot.py` является точкой запуска Telegram-клиента.
+
+Он создаёт `TelegramClient` и `BackendClient` и регистрирует обработчики:
+
+```text
+/start
+NewMessage
+CallbackQuery
+Voice messages
+```
+
+Основные обработчики:
+
+```text
+start_handler
+registration_message_handler
+callback_handler
+voice_message_handler
+```
+
+---
+
+## 5. Конфигурация
+
+Конфигурация находится в `telegram_bot/config.py`.
+
+Основные параметры:
+
+```text
+TELEGRAM_API_ID
+TELEGRAM_API_HASH
+TELEGRAM_BOT_TOKEN
+TELEGRAM_BOT_SHARED_SECRET
+FAMILY_BEACON_BACKEND_URL
+TELEGRAM_SESSION_PATH
+AUTHOR_TELEGRAM_ID
+TELEGRAM_MTPROTO_PROXY_HOST
+TELEGRAM_MTPROTO_PROXY_PORT
+TELEGRAM_MTPROTO_PROXY_SECRET
+```
+
+Секреты не должны находиться в исходном коде или документации.
+
+---
+
+## 6. Определение пользователя
+
+При `/start` бот получает Telegram ID отправителя и передаёт его Backend API:
+
+```text
+GET /telegram/lookup/{telegram_id}
+```
+
+с заголовком `X-Telegram-Bot-Key`.
+
+Backend определяет тип пользователя:
+
+```text
+Telegram ID
+     │
+     ▼
+Backend
+     │
+     ├── profiles.telegram_id → Parent / Admin
+     │
+     └── children.telegram_id → Child
+```
+
+Неизвестный пользователь получает выбор роли:
+
+```text
+Welcome
+   ↓
+Родитель / Ребёнок
+```
+
+---
+
+## 7. Parent Menu
+
+Основное родительское меню содержит:
+
+```text
+🌟 Семейный маяк · 0.1.1
+
+🏠 Семья
+👶 Дети
+📨 Приглашения
+ℹ️ О программе
+```
+
+Версия берётся из `telegram_bot/version.py`.
+
+---
+
+## 8. Раздел «Семья»
+
+Раздел семьи является центральным рабочим экраном родителя.
+
+Схема:
+
+```text
+🏠 Семья
+├── название семьи
+├── дети
+├── Выдать приглашение
+├── Профиль
+└── Назад
+```
+
+Кнопка `👤 Профиль` находится непосредственно внутри меню `🏠 Семья`.
+
+Для выбранного ребёнка доступны:
+
+```text
+👤 Профиль
+⏱ Время
+💻 Устройства
+```
+
+---
+
+## 9. Переименование семьи
+
+Поток:
+
+```text
+🏠 Семья
+   ↓
+название семьи
+   ↓
+ввод нового названия
+   ↓
+Backend
+   ↓
+Supabase
+```
+
+Бот использует in-memory состояние `family_rename_sessions`.
+
+После успешного изменения пользователю показывается новое название семьи.
+
+---
+
+## 10. Регистрация родителя
+
+Поток:
+
+```text
+/start
+  ↓
+Родитель
+  ↓
+ввод e-mail/логина
+  ↓
+ввод пароля
+  ↓
+POST /auth/register-parent
+  ↓
+Supabase Auth
+  ↓
+profiles
+  ↓
+Parent Menu
+```
+
+Регистрация использует `RegistrationSession`.
+
+Основные состояния:
+
+```text
+waiting_login
+      ↓
+waiting_password
+      ↓
+completed
+```
+
+Пароль не хранится в Telegram state после завершения шага и передаётся Backend для регистрации.
+
+---
+
+## 11. Регистрация ребёнка
+
+Поток регистрации ребёнка использует приглашение родителя:
+
+```text
+/start
+   ↓
+Ребёнок
+   ↓
+Invite Code
+   ↓
+Имя ребёнка
+   ↓
+Backend
+   ↓
+Supabase
+   ↓
+children
+```
+
+`RegistrationSession` использует состояния:
+
+```text
+waiting_invite_code
+      ↓
+waiting_child_name
+      ↓
+completed
+```
+
+Telegram ID ребёнка хранится в `children.telegram_id`.
+
+---
+
+## 12. Регистрация устройства ребёнка
+
+Регистрация устройства является отдельным stateful workflow:
+
+```text
+Ребёнок
+   ↓
+💻 Устройства
+   ↓
+Регистрация устройства
+   ↓
+временный код
+   ↓
+Backend
+   ↓
+ожидание подтверждения родителя
+```
+
+Для него используется состояние `waiting_device_registration_code`.
+
+После отправки кода возможны состояния, отражающие результат регистрации: ожидание подтверждения, одобрение, отклонение, истечение срока, неверный или уже использованный код.
+
+---
+
+## 13. Семейные приглашения
+
+Родитель может открыть:
+
+```text
+📨 Приглашения
+```
+
+и:
+
+- посмотреть существующие приглашения;
+- создать новое приглашение.
+
+Приглашение содержит:
+
+```text
+code
+expires_at
+status
+```
+
+Жизненный цикл:
+
+```text
+active
+   ↓
+used / expired / revoked
+```
+
+Постоянное состояние приглашений хранится в Supabase.
+
+---
+
+## 14. Просмотр детей
+
+Родитель может открыть список детей и выбрать конкретного ребёнка.
+
+Для ребёнка доступны:
+
+```text
+👤 Профиль
+⏱ Время
+💻 Устройства
+```
+
+Backend дополнительно проверяет принадлежность ребёнка семье текущего родителя.
+
+---
+
+## 15. Child Menu
+
+После идентификации ребёнка бот показывает меню:
+
+```text
+🌟 Семейный маяк · 0.1.1
+
+Привет, <имя>!
+
+👤 Профиль
+⏱ Время
+💻 Устройства
+```
+
+Данные ребёнка загружаются через Telegram child backend API.
+
+---
+
+## 16. BackendClient
+
+`telegram_bot/backend_client.py` является HTTP-клиентом Telegram-бота для Backend API.
+
+Он обеспечивает транспорт:
+
+```text
+Telegram Bot
+      ↓
+HTTP
+      ↓
+FastAPI
+```
+
+Используется общий секрет:
+
+```text
+X-Telegram-Bot-Key
+```
+
+Группы операций:
+
+```text
+Identity
+Parent registration
+Parent profile
+Family
+Family rename
+Children
+Invites
+Device registration
+Agent installation
+Account deletion
+Child dashboard
+```
+
+Telegram-бот не должен напрямую обращаться к Supabase.
+
+---
+
+## 17. Аутентификация Telegram → Backend
+
+Telegram API endpoints используют:
+
+```text
+X-Telegram-Bot-Key
+```
+
+Backend проверяет секрет и затем выполняет проверку Telegram ID и бизнес-прав.
+
+Схема:
+
+```text
+Telegram Bot
+    │
+    │ X-Telegram-Bot-Key
+    ▼
+FastAPI
+    │
+    ├── authentication
+    ├── Telegram ID
+    └── business validation
+          │
+          ▼
+      Supabase
+```
+
+---
+
+## 18. Голосовой ввод
+
+Начиная с версии **Telegram Bot 0.1.1**, бот поддерживает локальное распознавание Telegram voice messages.
+
+Голосовой режим является опциональным и включается параметром:
+
+```text
+--whisper
+```
+
+Без параметра Whisper не загружается.
+
+С параметром:
+
+```text
+Telegram voice
+      ↓
+Telethon
+      ↓
+OGG download
+      ↓
+Whisper turbo
+      ↓
+recognized text
+      ↓
+existing text handlers
+```
+
+---
+
+## 19. Архитектура Whisper
+
+Whisper загружается только при запуске с `--whisper`.
+
+Модель:
+
+```text
+turbo
+```
+
+Модель кэшируется локально и загружается один раз на процесс.
+
+Распознавание выполняется через отдельный worker thread, чтобы не блокировать основной async event loop.
+
+---
+
+## 20. Голос как альтернативный текстовый ввод
+
+Ключевой принцип:
+
+**Whisper не содержит отдельной бизнес-логики Telegram.**
+
+После распознавания:
+
+```text
+voice message
+     ↓
+Whisper
+     ↓
+text
+     ↓
+_TextEventAdapter
+     ↓
+existing text handlers
+```
+
+Поэтому голос автоматически может использовать существующие сценарии, если соответствующий сценарий находится в ожидающем состоянии.
+
+Фактически проверен сценарий:
+
+```text
+Семья
+   ↓
+Переименование семьи
+   ↓
+голосовое сообщение
+   ↓
+Whisper
+   ↓
+текст
+   ↓
+family rename handler
+   ↓
+Backend
+   ↓
+новое имя семьи
+```
+
+Это подтверждает полноценную интеграцию voice → text → existing workflow.
+
+---
+
+## 21. Ограничение голосового ввода
+
+Голосовое сообщение не является самостоятельной универсальной командой.
+
+Если пользователь отправляет произвольный голосовой текст без активного stateful-сценария, бизнес-обработчик может не выполнить никакого действия.
+
+Схема:
+
+```text
+Whisper
+   ↓
+text
+   ↓
+stateful handlers
+   ↓
+нет активного состояния
+   ↓
+нет действия
+```
+
+Это нормальное поведение текущей архитектуры.
+
+---
+
+## 22. Callback architecture
+
+Callback data разделена по доменам:
+
+```text
+role:*
+parent:*
+child:*
+device_registration:*
+agent_installation:*
+```
+
+Центральный callback handler маршрутизирует события соответствующим обработчикам.
+
+---
+
+## 23. Установка Family Beacon Agent
+
+В Telegram-слое существует отдельный обработчик `agent_installation_handlers.py`.
+
+Он создаёт installation request через Backend и получает installation code.
 
 Архитектурно:
 
 ```text
-Telethon Bot
-      ↓
-Backend API
-      ↓
+Parent
+   ↓
+Telegram Bot
+   ↓
+Backend
+   ↓
+Installation Code
+   ↓
+Family Beacon Agent
+```
+
+В текущем коде обработчик установки существует отдельно от основного family menu. Кнопка установки Agent не является частью основного `_parent_family_buttons()`; существует отдельный builder с поддержкой установки. Это текущее состояние реализации.
+
+---
+
+## 24. Удаление аккаунта
+
+Родительский профиль содержит:
+
+```text
+🗑 Забыть меня
+```
+
+Поток:
+
+```text
+Profile
+   ↓
+confirmation
+   ↓
+Backend
+   ↓
+delete_parent_account RPC
+   ↓
 Supabase
 ```
 
-Telegram-бот отвечает преимущественно за:
+Операция требует явного подтверждения пользователя.
 
-- взаимодействие с пользователем;
-- состояние Telegram-сессии;
-- получение Telegram ID;
-- отображение меню;
-- сбор регистрационных данных;
-- вызов Backend API.
+---
 
-Backend отвечает за:
+## 25. Архитектура состояния
 
+Текущие Telegram-состояния хранятся в памяти процесса:
+
+```text
+registration_sessions
+family_rename_sessions
+```
+
+При перезапуске процесса эти состояния теряются.
+
+При этом бизнес-состояние хранится в Supabase:
+
+```text
+profiles
+families
+family_members
+children
+devices
+invites
+commands
+time policies
+usage
+```
+
+Принципиальное разделение:
+
+```text
+Telegram session state
+        ≠
+Business state
+```
+
+---
+
+## 26. Разделение ответственности
+
+### Telegram Bot
+
+Отвечает за:
+
+- UI;
+- Telegram events;
+- callback routing;
+- Telegram ID;
+- stateful user interaction;
+- Whisper transcription;
+- HTTP-запросы к Backend.
+
+### Backend
+
+Отвечает за:
+
+- бизнес-логику;
+- авторизацию Telegram-запросов;
+- проверку прав;
 - регистрацию;
-- авторизацию;
-- бизнес-правила;
-- работу с Family;
-- работу с children;
-- проверку invite code;
-- взаимодействие с Supabase;
-- контроль доступа.
+- семьи;
+- детей;
+- приглашения;
+- регистрацию устройств;
+- Agent installation;
+- удаление аккаунта.
 
-Supabase является хранилищем бизнес-состояния системы.
+### Supabase
 
----
+Отвечает за:
 
-## 9. Update Service
+- постоянное бизнес-состояние;
+- PostgreSQL;
+- Auth;
+- RLS;
+- RPC;
+- целостность данных.
 
-Telegram-бот должен обновляться без ручного `git pull` на production-сервере.
+### Device Agent
 
-Целевая архитектура:
+Отвечает за:
 
-```text
-GitHub
-   ↓
-GitHub Actions
-   ├── tests
-   ├── security checks
-   ├── SonarCloud
-   └── build release
-           ↓
-      Release Artifact
-           ↓
-      Update Service
-           ├── download
-           ├── verify
-           ├── install
-           ├── health check
-           ├── activate
-           └── rollback
-                  ↓
-             Telethon Bot
-```
-
-Production не должен зависеть от состояния Git working tree.
-
-Каждый релиз является отдельной версией.
-
-Например:
-
-```text
-/opt/family-beacon/
-├── releases/
-│   ├── 1.0.0/
-│   ├── 1.1.0/
-│   └── 1.2.0/
-│
-├── current -> releases/1.2.0
-│
-└── shared/
-    ├── .env
-    └── telegram.session
-```
-
-Секреты и Telegram session не должны находиться внутри release directory.
-
-Перед активацией новой версии Update Service должен:
-
-1. скачать release artifact;
-2. проверить его целостность;
-3. установить новую версию;
-4. выполнить health check;
-5. активировать новую версию;
-6. сохранить предыдущую версию;
-7. выполнить rollback при неудачном запуске или health check.
+- работу на компьютере ребёнка;
+- регистрацию устройства;
+- heartbeat;
+- получение команд;
+- выполнение команд;
+- IPC и локальный UI.
 
 ---
 
-## 10. Production services
-
-На первом этапе production предполагается организовать через systemd.
-
-Основные сервисы:
+## 27. Итоговая архитектура
 
 ```text
-family-beacon-telegram.service
-family-beacon-backend.service
-family-beacon-updater.service
+                         TELEGRAM
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │   Telethon    │
+                    │    MTProto    │
+                    └───────┬───────┘
+                            │
+                 ┌──────────┴──────────┐
+                 │                     │
+                 ▼                     ▼
+          Text / Callback          Voice
+                 │                     │
+                 │                 Whisper
+                 │                     │
+                 │                     ▼
+                 │                   Text
+                 │                     │
+                 └──────────┬──────────┘
+                            ▼
+                    Telegram Handlers
+                            │
+                            ▼
+                    BackendClient
+                            │
+                  HTTP + Bot Secret
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │    FastAPI    │
+                    │ Telegram API  │
+                    └───────┬───────┘
+                            │
+                            ▼
+                  Telegram Services
+                     │            │
+                     ▼            ▼
+             Parent Service   Child Service
+                     │            │
+                     └──────┬─────┘
+                            ▼
+                       Supabase
+                            │
+          ┌─────────────────┼─────────────────┐
+          ▼                 ▼                 ▼
+       profiles          families          children
+                                              │
+                                              ▼
+                                           devices
 ```
 
-Telegram-бот должен корректно обрабатывать SIGTERM и выполнять graceful shutdown.
+Отдельный контур Agent:
 
-Это позволяет Update Service безопасно заменить текущую версию без повреждения Telegram session и бизнес-состояния.
+```text
+Parent
+  │
+  ▼
+Telegram Bot
+  │
+  ▼
+Backend
+  │
+  ▼
+Installation Code
+  │
+  ▼
+Device Agent
+  │
+  ▼
+Device
+```
 
 ---
 
-## 11. Работа с базой данных
+## 28. Версия 0.1.1
 
-Бизнес-состояние хранится в Supabase.
+Версия `0.1.1` фиксирует состояние Telegram-бота после интеграции голосового ввода.
 
-Telegram-бот не является источником истины для:
+В неё входят:
 
-- пользователей;
-- family;
-- children;
-- устройств;
-- команд;
-- политик;
-- истории действий.
+- Telethon/MTProto transport;
+- FakeTLS proxy support через `tgnet`;
+- родительский интерфейс;
+- семейный интерфейс;
+- профиль внутри меню семьи;
+- приглашения;
+- просмотр детей;
+- регистрационные state machines;
+- регистрация устройств;
+- Agent installation API integration;
+- локальный Whisper;
+- опциональный запуск через `--whisper`;
+- передача Whisper-текста в существующие handlers;
+- диагностическое логирование голосовых сообщений.
 
-Telegram session является техническим состоянием Telegram-клиента и хранится отдельно от release.
-
-Изменения схемы Supabase должны выполняться через миграции.
-
-Для несовместимых изменений используется последовательность:
+Ключевой результат версии:
 
 ```text
-Expand
-   ↓
-Migrate
-   ↓
-Contract
+Voice
+  ↓
+Whisper
+  ↓
+Text
+  ↓
+Existing Telegram workflow
 ```
 
-Это позволяет обновлять Backend и Telegram-бот без резкого нарушения совместимости.
+без создания отдельной бизнес-логики для голосовых команд.
 
 ---
 
-## 12. Принцип разделения ответственности
+## 29. Тестирование
 
-Итоговая архитектура:
+Telegram-тесты находятся отдельно:
 
 ```text
-                   Telegram
-                      │
-                      ▼
-                 Telethon
-                      │
-                      ▼
-              Telegram Bot
-                      │
-                      ▼
-                 Backend API
-                      │
-                      ▼
-                  Supabase
-                 /        \
-                /          \
-           profiles       children
-                │            │
-             Parent         Child
+telegram_bot/tests_telegram_bot/
 ```
 
-Отдельный контур обновления:
+Покрываются, в частности:
 
 ```text
-GitHub
-   ↓
-GitHub Actions
-   ↓
-Release
-   ↓
-Update Service
-   ↓
-Telethon Bot
+test_about.py
+test_agent_installation.py
+test_backend_client.py
+test_device_registration.py
+test_family_rename_handlers.py
+test_parent_family_menu.py
+test_parent_menu.py
+test_registration.py
+test_version.py
+test_voice_handler.py
+```
+
+Особенно важен `test_voice_handler.py`, проверяющий передачу распознанного текста в существующий message flow.
+
+Telegram-тесты не должны автоматически переноситься в структуру backend-тестов.
+
+---
+
+## 30. Главный архитектурный принцип
+
+```text
+Telegram
+    = интерфейс и пользовательское взаимодействие
+
+Backend
+    = бизнес-логика и контроль доступа
+
+Supabase
+    = источник постоянного бизнес-состояния
+
+Whisper
+    = преобразование голос → текст
+
+Device Agent
+    = исполнитель действий на устройстве ребёнка
 ```
 
 Главный принцип:
 
-**Telegram — интерфейс, Backend — бизнес-логика, Supabase — источник бизнес-состояния, Update Service — управление жизненным циклом production-релизов.**
+**Telegram-бот не должен дублировать бизнес-логику Backend. Голосовой ввод также не должен создавать отдельную бизнес-логику: он преобразует голос в текст и передаёт его существующему пользовательскому workflow.**
